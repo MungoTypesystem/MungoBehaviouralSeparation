@@ -165,6 +165,19 @@ class testParallel1 {
     }
 } */
 
+class testSplit {
+    {m; end}
+
+    testParallel2 f1
+    testUsingParallel f2
+    void m(void -> void x, void -> void y) {
+        f1 = new testParallel2;
+        f2 = new testUsingParallel;
+        f2.m(f1, f1);
+        f1.f(unit, unit)
+    }
+}
+
 class testParallel2 {
     ({h; end} | {g;end}).{f;end}
     
@@ -193,16 +206,4 @@ class testUsingParallel {
     }
 }
 
-class testSplit {
-    {m; end}
-
-    testParallel2 f1
-    testUsingParallel f2
-    void m(void -> void x, void -> void y) {
-        f1 = new testParallel2;
-        f2 = new testUsingParallel;
-        f2.m(f1, f1);
-        f1.f(unit, unit)
-    }
-}
 

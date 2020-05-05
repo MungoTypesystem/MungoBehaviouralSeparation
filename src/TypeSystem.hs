@@ -5,7 +5,7 @@ import StateErrorMonad
 import Data.Either (rights, isRight, fromRight)
 import Data.Maybe (isNothing, catMaybes, isJust, fromJust)
 import Data.List (permutations, sortBy, nub, intersect)
-import Control.Monad (forM, when)
+import Control.Monad (forM, when, unless)
 import Control.Arrow (second)
 
 -- debug stuff
@@ -168,7 +168,7 @@ extractTypeFromGamma fieldname = do
     let withoutName = filter ((fieldname /=) . fst) gamma
     
     t <- headM withName
-    withName' <- initM withName
+    let withName' = tail withName
 
     let gamma' = withName' ++ withoutName
     when (isClassType (snd t)) $ writeGamma gamma'
@@ -217,11 +217,11 @@ isClassType BotType         = True
 isClassType (ClassType _ _) = True 
 isClassType _               = False
 
-isBoolType :: Type -> Bool
+
 isBoolType (BoolType) = True
 isBoolType _          = False
 
--- Typing functions for monads
+
 getClass' :: DUsageState Class 
 getClass' = do
     s <- getState
@@ -320,7 +320,6 @@ checkCall r m v1 v2 = do
     -- check call
     -- unsplit gamma
     splitGamma names
-    debugTrace $ "call -------------------"
     forAll $ do
         getGamma >>= \g -> debugTrace ("starting gamma " ++ show g)
         -- find the method definition
@@ -342,13 +341,51 @@ checkCall r m v1 v2 = do
 
         -- check that parameters match
         -- TODO we should only check usageimpl
-        assert' $ fromTypeP1 == v1Type
-        assert' $ fromTypeP2 == v2Type
+
+
+
+        when (isClassType v1Type && isClassType  fromTypeP1) $ do
+            (cnV1, uV1) <- typeExtractClassInfo v1Type
+            (cnFrom1, uFrom1) <- typeExtractClassInfo fromTypeP1
+            assert' $ cnV1 == cnFrom1 && currentUsage uFrom1 == currentUsage uV1
+
+        unless (isClassType v1Type && isClassType fromTypeP1) $ do
+            assert' $ fromTypeP1 == v1Type
+
+        when (isClassType v2Type && isClassType fromTypeP2) $ do
+            (cnV2, uV2) <- typeExtractClassInfo v2Type
+            (cnFrom2, uFrom2) <- typeExtractClassInfo fromTypeP2
+            assert' $ cnV2 == cnFrom2 && currentUsage uFrom2 == currentUsage uV2
+
+        unless (isClassType v1Type && isClassType  fromTypeP1) $ do
+            assert' $ fromTypeP2 == v2Type
         
         -- save the resulting parameter type 
         -- we should save the previous s
-        updateValueInGamma v1 toTypeP1
-        updateValueInGamma v2 toTypeP2
+        when (isClassType v1Type && isClassType toTypeP1) $ do
+            -- copy the s
+            (cnV1, uV1)   <- typeExtractClassInfo v1Type
+            (cnTo1, uTo1) <- typeExtractClassInfo toTypeP1
+            let u' = currentUsage uTo1
+            let newUsage = uV1 { currentUsage = u' }
+            assert' $ cnV1 == cnTo1 
+            updateValueInGamma v1 (ClassType cnV1 newUsage) 
+
+        unless (isClassType toTypeP1) $ do
+            updateValueInGamma v1 toTypeP1
+
+        when (isClassType v2Type && isClassType toTypeP2) $ do
+            -- copy the s
+            (cnV2, uV2)   <- typeExtractClassInfo v2Type
+            (cnTo2, uTo2) <- typeExtractClassInfo toTypeP2
+            let u' = currentUsage uTo2
+            let newUsage = uV2 { currentUsage = u' }
+            assert' $ cnV2 == cnTo2 
+            updateValueInGamma v2 (ClassType cnV2 newUsage) 
+
+        unless (isClassType toTypeP2) $ do
+            updateValueInGamma v2 toTypeP2
+
         getGamma >>= \g -> debugTrace ("updated gamma " ++ show g)
 
         gamma <- getGamma
@@ -359,10 +396,10 @@ checkCall r m v1 v2 = do
             u' <- resultingUsages
             let gamma' = ((getReferenceName r), (ClassType cn u')) : gamma
             let s' = updateGammaInState s gamma'
-            debugTrace $ "show final gamma - " ++ show gamma'
             return (s', retType)
         
     unsplitGamma names
+    
     where getValueName :: Value -> Maybe String
           getValueName (ValueReference r) = Just $ getReferenceName r
           getValueName _                  = Nothing
@@ -372,13 +409,14 @@ getReferenceName (RefParameter n) = n
 getReferenceName (RefField n)     = n
 
 splitGamma :: [String] -> NDTypeSystem ()
-splitGamma variables = forAll $ do
+splitGamma variablesIn = forAll $ do
     gamma <- getGamma
     let gammas = splitGamma' [[]] (reverse gamma)
     s <- getMyState
     t <- getReturnType
     return [ (updateGammaInState s gamma', t) | gamma' <- gammas]
-    where splitGamma' :: [Gamma] -> Gamma -> [Gamma]
+    where variables = nub variablesIn
+          splitGamma' :: [Gamma] -> Gamma -> [Gamma]
           splitGamma' gammas []            = gammas
           splitGamma' gammas ((f, t) : gs) =
                 if f `elem` variables
@@ -413,9 +451,9 @@ splitUsage u =
         splitUsage' u = [[u]]
 
 unsplitGamma :: [String] -> NDTypeSystem ()
-unsplitGamma variables = forAll $ do
+unsplitGamma variablesIn = forAll $ do
+    let variables = nub variablesIn
     gamma <- getGamma
-
 
     -- find the all the references with variable name
     -- we cannot assume ClassType as it could be anything currently
@@ -433,14 +471,11 @@ unsplitGamma variables = forAll $ do
                           | (name, sharedTypes) <- sharedVariable
                           , length sharedTypes > 1 ] :: [(String, [Type])]
 
-    debugTrace $ show sharedVariable'
-
     -- TODO could just be a BotType
     let sharedUsage = [ (name, sharedUsages)
                     | (name, sharedTypes) <- sharedVariable'
                     , let sharedUsages = map snd $ catMaybes $ map typeExtractClassInfo sharedTypes ] :: [(String, [Usage])]
 
-    debugTrace $ show sharedUsage
 
     assert' $ length sharedVariable' == length sharedUsage
 
@@ -471,9 +506,7 @@ unsplitGamma variables = forAll $ do
     let gamma'  = filter ((`notElem` variables') . fst) gamma
     let gamma'' = gamma' ++ combined'''
     -- sort gamma''
-    let gamma''' = sortBy (\a b -> fst a `compare` fst b ) gamma''
-
-    -- TODO Make gamma alway sorted on fieldname
+    let gamma''' = map fixEndParallelEndType $ sortBy (\a b -> fst a `compare` fst b ) gamma''
 
     -- if not possible remove it
 
@@ -481,7 +514,19 @@ unsplitGamma variables = forAll $ do
     t <- getReturnType
     let s' = updateGammaInState s gamma'''
     return [(s',t)]
-    where fixPointCombiner :: [Usage] -> Maybe [Usage]
+    where fixEndParallelEndType :: (String, Type) -> (String, Type) 
+          fixEndParallelEndType (f, (ClassType cn u)) = (f, (ClassType cn (fixEndParallelEnd u)))
+          fixEndParallelEndType otherwise             = otherwise
+        
+          fixEndParallelEnd :: Usage -> Usage
+          fixEndParallelEnd u = u{currentUsage = fixEndParallelEnd' (currentUsage u)}
+
+          fixEndParallelEnd' :: UsageImpl -> UsageImpl
+          fixEndParallelEnd' (UsageParallel UsageEnd UsageEnd u) = u
+          fixEndParallelEnd' (UsageParallel u1 u2 u3) = UsageParallel (fixEndParallelEnd' u1) (fixEndParallelEnd' u2) u3
+          fixEndParallelEnd' u = u
+ 
+          fixPointCombiner :: [Usage] -> Maybe [Usage]
           fixPointCombiner lst = do
               lst' <- combiner [] lst
               if lst == lst'

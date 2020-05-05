@@ -78,8 +78,8 @@ data Expression = ExpressionSeq Expression Expression
 
 -- U
 data Usage = Usage { currentUsage :: UsageImpl
-                   , currentSplit   :: SplitUsage
-                   } deriving (Eq)
+                   , currentSplit :: SplitUsage
+                   } 
 
 -- s 
 data SplitUsage = SplitEmpty
@@ -115,5 +115,7 @@ instance Show UsageImpl where
     show UsageEnd            = "end"
     show UsagePlaceholder    = "O"
 
+instance Eq Usage where
+    u1 == u2 = currentUsage u1 == currentUsage u2
 
 

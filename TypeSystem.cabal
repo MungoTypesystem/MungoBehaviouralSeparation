@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 753fa26a7448c1594e2b2a5c970955f578e75de91d88afb4dea908cdcc9e0fb4
+-- hash: f33898d14e7de733fbc749b511320cc3050de3720519fbadf9c33bcb9f189904
 
 name:           TypeSystem
 version:        0.1.0.0
@@ -15,7 +15,6 @@ author:         Author name here
 maintainer:     example@example.com
 copyright:      2020 Author name here
 license:        BSD3
-license-file:   LICENSE
 build-type:     Simple
 extra-source-files:
     README.md
@@ -33,7 +32,7 @@ library
       Lib
       Parser
       StateErrorMonad
-      TypeSystem
+      Typesystem
   other-modules:
       Paths_TypeSystem
   hs-source-dirs:
