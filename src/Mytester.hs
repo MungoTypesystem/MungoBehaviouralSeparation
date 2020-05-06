@@ -1,10 +1,10 @@
-module Tester where
+module Mytester where
 
 import Cst
 import Ast
 import Parser
 import AstTransformer
-import TypeSystem
+import Typesystem
 import Data.Either (either)
 import Control.Monad (mapM_, guard)
 import Data.List (permutations, nub)
@@ -34,8 +34,6 @@ printAst program = do
     putStrLn $ case typeChecked of
                     Left err -> show err
                     Right _  -> "program checked successfully"
-    
-
 
 (Right u1) = testParseUsage "rec X. {m; <end, X>}"
 (Right u1') = convertUsage u1 []

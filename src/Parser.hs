@@ -66,8 +66,8 @@ parseClass :: Parser CstClass
 parseClass =
     do reserved "class"
        name <- identifier
-       braces $ do usage   <- parseUsage
-                   fields  <- parseFields
+       usage <- brackets parseUsage
+       braces $ do fields  <- parseFields
                    methods <- parseMethods
                    return $ CstClass name usage fields methods
        
@@ -87,18 +87,37 @@ parseMethod =
        name       <- identifier
        params     <- parens parseParameters
        body       <- braces parseExpression
+                        
        return $ CstMethod returnType name params body
-    where parseParameters :: Parser (CstParameter, CstParameter)
-          parseParameters = do parameter1 <- parseParameter
-                               comma
-                               parameter2 <- parseParameter
-                               return (parameter1, parameter2)
-          parseParameter :: Parser CstParameter
-          parseParameter = do startingType  <- parseType
-                              reservedOp "->"
-                              endingType    <- parseType
-                              parameterName <- identifier
-                              return $ CstParameter startingType endingType parameterName
+parseParameters :: Parser (CstParameter, CstParameter)
+parseParameters =   try parseFullParameters
+                <|> try parseHalfParameter
+                <|> parseEmptyParameter
+    where parseFullParameters = do parameter1 <- parseParameter
+                                   comma
+                                   parameter2 <- parseParameter 
+                                   return (parameter1, parameter2)
+          parseHalfParameter = do parameter1 <- parseParameter
+                                  parameter2 <- voidParameter 2
+                                  return (parameter1, parameter2)
+          parseEmptyParameter = do parameter1 <- voidParameter 1 
+                                   parameter2 <- voidParameter 2
+                                   return (parameter1, parameter2)
+
+
+          voidParameter n = return $ CstParameter (CstSimpleType "void") (CstSimpleType "void") ("$param"++show n)
+
+parseParameter :: Parser CstParameter
+parseParameter =   try parseFullParameter 
+               <|> try parseHalfParameter
+    where parseFullParameter = do startingType  <- parseType
+                                  reservedOp "->"
+                                  endingType    <- parseType
+                                  parameterName <- identifier
+                                  return $ CstParameter startingType endingType parameterName
+          parseHalfParameter = do startingType  <- parseType
+                                  parameterName <- identifier
+                                  return $ CstParameter startingType startingType parameterName
        
 
 parseType :: Parser CstType
@@ -150,11 +169,17 @@ parseCallExpression =
     do r <- identifier
        dot
        m <- identifier
-       (v1, v2) <- parens $ do v1 <- identifier
-                               comma
-                               v2 <- identifier
-                               return (v1, v2)
+       (v1, v2) <- parens $ try fullParam <|> try halfParam <|> noParam
        return $ CstExpressionCall r m v1 v2
+    where fullParam = do v1 <- identifier
+                         comma
+                         v2 <- identifier
+                         return (v1, v2)
+          halfParam = do v1 <- identifier
+                         return (v1, "unit")
+          noParam = return ("unit", "unit")
+          
+
 
 parseIfExpression :: Parser CstExpression
 parseIfExpression = 
@@ -192,7 +217,8 @@ parseIdentifierExpression :: Parser CstExpression
 parseIdentifierExpression = CstExpressionIdentifier <$> identifier
 
 parseUsage :: Parser CstUsage
-parseUsage = parseBranchUsage
+parseUsage =   try parseSeqUsage
+           <|> parseBranchUsage
 
 parseBranchUsage :: Parser CstUsage
 parseBranchUsage =   parseEndUsage
@@ -200,6 +226,13 @@ parseBranchUsage =   parseEndUsage
                  <|> parseParallelUsage
                  <|> braces parseBranchUsage'
                  <|> parseVariableUsage
+
+parseSeqUsage :: Parser CstUsage
+parseSeqUsage = 
+    do u1 <- parseBranchUsage
+       semi
+       u2 <- parseBranchUsage
+       return $ CstUsageParallel u1 CstUsageEnd u2
 
 parseBranchUsage' :: Parser CstUsage
 parseBranchUsage' = 
@@ -214,37 +247,36 @@ parseBranchUsage' =
     
 parseChoiceUsage :: Parser CstUsage
 parseChoiceUsage =   angles parseChoiceUsage'
-                 <|> parseBranchUsage
+                 <|> parseUsage
 
 parseChoiceUsage' :: Parser CstUsage
 parseChoiceUsage' = 
-    do u1 <- parseBranchUsage
+    do u1 <- parseUsage
        comma
-       u2 <- parseBranchUsage
+       u2 <- parseUsage
        return $ CstUsageChoice u1 u2
 
 parseParallelUsage :: Parser CstUsage
-parseParallelUsage =
-    do (u1, u2) <- parens parseParallelUsagePair
+parseParallelUsage = 
+    do parallel <- parens parseParallelUsagePair'
        dot
-       u3 <- parseBranchUsage
-       return $ CstUsageParallel u1 u2 u3
-    
+       u3 <- parseUsage
+       return $ combineUsage u3 parallel
+        where combineUsage :: CstUsage -> [CstUsage] -> CstUsage
+              combineUsage u3 (x:y:[]) = CstUsageParallel x y u3 
+              combineUsage u3 (x:[])   = CstUsageParallel x CstUsageEnd u3
+              combineUsage u3 []       = u3
+              combineUsage u3 (x:xs)   = CstUsageParallel x (combineUsage u3 xs) CstUsageEnd
 
-parseParallelUsagePair :: Parser (CstUsage, CstUsage)
-parseParallelUsagePair = 
-    do u1 <- parseBranchUsage 
-       reservedOp "|"
-       u2 <- parseBranchUsage
-       return $ (u1, u2)
-
+parseParallelUsagePair' :: Parser [CstUsage]
+parseParallelUsagePair' =  sepBy1 parseUsage (reservedOp "|")
 
 parseRecursiveUsage :: Parser CstUsage
 parseRecursiveUsage = 
     do reserved "rec"
        name <- identifier
        dot
-       usage <- parseBranchUsage
+       usage <- parseUsage
        return $ CstUsageRecursive name usage
 
 parseVariableUsage :: Parser CstUsage

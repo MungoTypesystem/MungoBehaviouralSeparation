@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: f33898d14e7de733fbc749b511320cc3050de3720519fbadf9c33bcb9f189904
+-- hash: 42f0ad8e0a591645d7ca3203349dc35fbd9b9e13f99e0b41103c03bcb933f13f
 
 name:           TypeSystem
 version:        0.1.0.0
@@ -30,6 +30,7 @@ library
       AstTransformer
       Cst
       Lib
+      Mytester
       Parser
       StateErrorMonad
       Typesystem

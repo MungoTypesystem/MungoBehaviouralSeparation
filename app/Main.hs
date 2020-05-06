@@ -1,6 +1,7 @@
 module Main where
 
-import Parser
+import Cst
+import Mytester
 
 main :: IO ()
-main = do putStrLn "hello world" -- helloWorld
+main = run

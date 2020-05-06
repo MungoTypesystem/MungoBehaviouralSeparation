@@ -1,4 +1,4 @@
-module TypeSystem where
+module Typesystem where
 
 import Ast
 import StateErrorMonad
@@ -11,6 +11,7 @@ import Control.Arrow (second)
 -- debug stuff
 import Debug.Trace
 debugTrace s = trace s $ return ()
+
 
 type Gamma = [(String, Type)]
 
@@ -43,7 +44,7 @@ instance Eq MyState where
 forAll :: DTypeSystem [(MyState, Type)] -> NDTypeSystem ()
 forAll f = do
     states <- getState
-    let states' = concat $ map fst $ rights $ map (runState f) states 
+    let states' = nub $ concat $ map fst $ rights $ map (runState f) states 
     rewriteStates states' 
     return ()
 
@@ -321,7 +322,7 @@ checkCall r m v1 v2 = do
     -- unsplit gamma
     splitGamma names
     forAll $ do
-        getGamma >>= \g -> debugTrace ("starting gamma " ++ show g)
+        -- getGamma >>= \g -> debugTrace ("starting gamma " ++ show g)
         -- find the method definition
         (Method retType _ p1 p2 _) <- getMethod r m 
         t <- extractTypeFromGamma $ getReferenceName r 
@@ -337,7 +338,7 @@ checkCall r m v1 v2 = do
         
         v1Type <- extractTypeFromValue v1
         v2Type <- extractTypeFromValue v2
-        getGamma >>= \g -> debugTrace ("post extract gamma " ++ show g)
+        --getGamma >>= \g -> debugTrace ("post extract gamma " ++ show g)
 
         -- check that parameters match
         -- TODO we should only check usageimpl
@@ -386,7 +387,7 @@ checkCall r m v1 v2 = do
         unless (isClassType toTypeP2) $ do
             updateValueInGamma v2 toTypeP2
 
-        getGamma >>= \g -> debugTrace ("updated gamma " ++ show g)
+        --getGamma >>= \g -> debugTrace ("updated gamma " ++ show g)
 
         gamma <- getGamma
 
@@ -399,7 +400,7 @@ checkCall r m v1 v2 = do
             return (s', retType)
         
     unsplitGamma names
-    
+
     where getValueName :: Value -> Maybe String
           getValueName (ValueReference r) = Just $ getReferenceName r
           getValueName _                  = Nothing
@@ -409,12 +410,22 @@ getReferenceName (RefParameter n) = n
 getReferenceName (RefField n)     = n
 
 splitGamma :: [String] -> NDTypeSystem ()
-splitGamma variablesIn = forAll $ do
-    gamma <- getGamma
-    let gammas = splitGamma' [[]] (reverse gamma)
-    s <- getMyState
-    t <- getReturnType
-    return [ (updateGammaInState s gamma', t) | gamma' <- gammas]
+splitGamma variablesIn = do 
+    st <- getState
+    --debugTrace $ "splitGamma ND states " ++ show (length st)
+    forAll $ do
+            --debugTrace $ "split start " ++ show variablesIn
+            gamma <- getGamma
+            let gammas = splitGamma' [[]] (reverse gamma)
+            s <- getMyState
+            t <- getReturnType
+            --debugTrace $ "split size: " ++ show (length gammas)
+            --debugTrace $ "splitLast " ++ show (last gammas)
+            return [ (updateGammaInState s gamma', t) 
+                   | gamma' <- gammas]
+
+    --st' <- getState
+    --debugTrace $ "splitGamma ND states - done " ++ show (length st')
     where variables = nub variablesIn
           splitGamma' :: [Gamma] -> Gamma -> [Gamma]
           splitGamma' gammas []            = gammas
@@ -509,10 +520,14 @@ unsplitGamma variablesIn = forAll $ do
     let gamma''' = map fixEndParallelEndType $ sortBy (\a b -> fst a `compare` fst b ) gamma''
 
     -- if not possible remove it
+    -- test that we only have 1 of each type
+    let variableCount = map fst gamma'''
+    assert' $ length variableCount == length (nub variableCount)
 
     s <- getMyState
     t <- getReturnType
     let s' = updateGammaInState s gamma'''
+    
     return [(s',t)]
     where fixEndParallelEndType :: (String, Type) -> (String, Type) 
           fixEndParallelEndType (f, (ClassType cn u)) = (f, (ClassType cn (fixEndParallelEnd u)))
@@ -523,7 +538,12 @@ unsplitGamma variablesIn = forAll $ do
 
           fixEndParallelEnd' :: UsageImpl -> UsageImpl
           fixEndParallelEnd' (UsageParallel UsageEnd UsageEnd u) = u
-          fixEndParallelEnd' (UsageParallel u1 u2 u3) = UsageParallel (fixEndParallelEnd' u1) (fixEndParallelEnd' u2) u3
+          fixEndParallelEnd' (UsageParallel u1 u2 u3) = 
+                let u1' = (fixEndParallelEnd' u1)
+                    u2' = (fixEndParallelEnd' u2)
+                in if u1' == UsageEnd && u2' == UsageEnd
+                        then u3
+                        else UsageParallel u1' u2' u3
           fixEndParallelEnd' u = u
  
           fixPointCombiner :: [Usage] -> Maybe [Usage]
@@ -670,10 +690,11 @@ checkTCCh :: UsageImpl -> UsageImpl -> NDUsageState ()
 checkTCCh u1 u2 = forAll' $ do
     s <- getState
     (_, s1) <- fromEitherM $ runState (checkTUsage u1) [s]
-    (_, s2) <- fromEitherM $ runState (checkTUsage u1) [s]
+    (_, s2) <- fromEitherM $ runState (checkTUsage u2) [s]
     let result = [s1, s2]
     let resultFirst = usefullUsageStates result
     let resultFinal = validEnvironments resultFirst result
+    
     return resultFinal
 
 checkTCBr :: [(String, UsageImpl)] -> NDUsageState ()
@@ -776,10 +797,9 @@ checkTCPar u1 u2 u3 = forAll' $ do
     (_, res2') <- fromEitherM res2 
 
     -- combine them into one gamma
-    let gammas = do
-        gamma1' <- currentGamma <$> res1'
-        gamma2' <- currentGamma <$> res2'
-        return $ sortBy (\a b -> fst a `compare` fst b) $ gamma1' ++ gamma2'
+    let gammas = do gamma1' <- currentGamma <$> res1'
+                    gamma2' <- currentGamma <$> res2'
+                    return $ sortBy (\a b -> fst a `compare` fst b) $ gamma1' ++ gamma2'
 
     currentState <- getState
     -- [UsageState]
@@ -854,7 +874,7 @@ checkTClass cls c = do
     let state     = UsageState (initFields (classFields c)) [] classdata
     let res       = runState (checkTUsage usage) [state]
     case res of
-        (Right (_, term)) -> if any (\term' -> terminatedEnv (currentGamma term')) term
+        (Right (_, term)) -> if any (\term' -> terminatedEnv (currentGamma term')) $ term
                                     then Right ()
                                     else Left $ ["did not work", show (length term)] ++ map (show . currentGamma) term
         (Left err)        -> Left [err]
