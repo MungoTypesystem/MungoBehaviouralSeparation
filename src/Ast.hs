@@ -24,8 +24,14 @@ data Field = Field { fieldType :: FieldType
 -- z (FieldType)
 
 data FieldType = ClassFieldType ClassName
-               | BaseFieldType 
+               | BaseFieldType  SimpleType
                  deriving (Show)
+
+data SimpleType = BoolType 
+              | StringType
+              | IntegerType
+              | VoidType
+              deriving (Show, Eq)
 
 -- M (methods) 
 data Method = Method { returnType :: Type
@@ -54,14 +60,15 @@ data Value = ValueBase BaseValue
 -- b (BaseValues)
 data BaseValue = BaseUnit
                | BaseNull
+               | BaseString String
+               | BaseInteger Integer
                | BaseBool Bool
-                 deriving (Show)
+                 deriving (Show, Eq)
 
 -- t (Types)
 
 data Type = ClassType ClassName Usage
-          | BoolType
-          | VoidType
+          | BaseType SimpleType
           | BotType
             deriving (Show, Eq)
 
@@ -81,7 +88,9 @@ data Expression = ExpressionSeq Expression Expression
 data BinaryOperator = OpEQ
                     | OpAnd
                     | OpOr
-                    | OpNEQ deriving (Show)
+                    | OpNEQ
+                    | OpAdd
+                    | OpSub deriving (Show, Eq)
 
 -- U
 data Usage = Usage { currentUsage :: UsageImpl

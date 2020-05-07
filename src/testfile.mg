@@ -1,4 +1,5 @@
 
+/*
 // testing expression 
 class testReturnParameter[{m; end}] {
     void m(void x) {
@@ -322,7 +323,6 @@ class testWeirdUsage2[{m; end} ; {m; end}] {
         unit
     }
 }
-
 class main[{main; end}] {
 
     testSeqCallsOnParallel f
@@ -336,15 +336,30 @@ class main[{main; end}] {
     }
 }
 
+*/
+class BE [{e; <end, end>}] {
+    bool e(bool b) {
+        b
+    }
+}
 
-
-
-/*
 class testBinary[{m; end}] {
-    bool f
+    int f
+    bool b
+    BE be
     void m() {
-        f = (false == true == true != false && true || false);
-        print(f); 
+        f = 0;
+        (loop: 
+            b = (f == 100);
+            print(f);
+            be = new BE;
+            if (be.e(b)) {
+                unit
+            } else {
+                f = (f + 1);
+                continue loop
+            }
+        ); 
         unit
     }
 }
@@ -357,4 +372,3 @@ class main[{main; end}] {
         unit
     }
 }
-*/

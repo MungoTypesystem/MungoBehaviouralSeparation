@@ -10,6 +10,7 @@ import Text.ParserCombinators.Parsec.Language
 import qualified Text.ParserCombinators.Parsec.Token as Token
 import Control.Arrow (left)
 import Data.Maybe
+import Text.ParserCombinators.Parsec.Number
 
 parseProgram :: String -> Either String [CstClass]
 parseProgram = left show . parse parseClasses "" 
@@ -41,26 +42,27 @@ languageDef =
                                       , "print"
                                       , "unit"
                                       , "null" ]
-            , Token.reservedOpNames = ["=", ":", "==", "!=", "&&", "||"]
+            , Token.reservedOpNames = ["=", ":", "==", "!=", "&&", "||", "+", "-"]
             }
 
 lexer = Token.makeTokenParser languageDef
 
-identifier = Token.identifier lexer -- parses an identifier
-reserved   = Token.reserved   lexer -- parses a reserved name
-reservedOp = Token.reservedOp lexer -- parses an operator
-angles     = Token.angles     lexer -- 
-brackets   = Token.brackets   lexer -- []
-braces     = Token.braces     lexer -- {}
-parens     = Token.parens     lexer -- parses surrounding parenthesis:
-                                    --   parens p
-                                    -- takes care of the parenthesis and
-                                    -- uses p to parse what's inside them
-semi       = Token.semi       lexer -- parses a semicolon
-colon      = Token.colon      lexer -- parses a colon
-whiteSpace = Token.whiteSpace lexer -- parses whitespace
-dot        = Token.dot        lexer
-comma      = Token.comma      lexer
+identifier = Token.identifier    lexer -- parses an identifier
+reserved   = Token.reserved      lexer -- parses a reserved name
+reservedOp = Token.reservedOp    lexer -- parses an operator
+angles     = Token.angles        lexer -- 
+brackets   = Token.brackets      lexer -- []
+braces     = Token.braces        lexer -- {}
+parens     = Token.parens        lexer -- parses surrounding parenthesis:
+                                       --   parens p
+                                       -- takes care of the parenthesis and
+                                       -- uses p to parse what's inside them
+semi       = Token.semi          lexer -- parses a semicolon
+colon      = Token.colon         lexer -- parses a colon
+whiteSpace = Token.whiteSpace    lexer -- parses whitespace
+dot        = Token.dot           lexer
+comma      = Token.comma         lexer
+strParser  = Token.stringLiteral lexer
 
 parseClasses :: Parser [CstClass]
 parseClasses = many (whiteSpace >> parseClass)
@@ -159,6 +161,8 @@ parseBinaryOperator =
    <|> (reservedOp "!=" >> return CstOpNEQ)
    <|> (reservedOp "&&" >> return CstOpAnd)
    <|> (reservedOp "||" >> return CstOpOr)
+   <|> (reservedOp "+" >> return CstOpAdd)
+   <|> (reservedOp "-" >> return CstOpSub)
 
 parseExpression' :: Parser CstExpression
 parseExpression' =   parens parseExpression
@@ -169,6 +173,8 @@ parseExpression' =   parens parseExpression
                  <|> try parseLabelExpression
                  <|> parseContinueExpression
                  <|> parseBoolExpression
+                 <|> parseStringExpression
+                 <|> parseIntegerExpression
                  <|> parseUnitExpression
                  <|> parseNullExpression
                  <|> try parsePrintExpression
@@ -241,6 +247,18 @@ parseContinueExpression =
 parseBoolExpression :: Parser CstExpression
 parseBoolExpression =   (reserved "true"  >> return (CstExpressionBool True))
                     <|> (reserved "false" >> return (CstExpressionBool False))
+
+parseStringExpression :: Parser CstExpression
+parseStringExpression = do
+   str <- strParser
+   return $ CstExpressionString str
+
+parseIntegerExpression :: Parser CstExpression
+parseIntegerExpression = do
+    many space
+    number <- int
+    many space
+    return $ CstExpressionInteger number
 
 parseUnitExpression :: Parser CstExpression
 parseUnitExpression = reserved "unit" >> return CstExpressionUnit

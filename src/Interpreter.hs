@@ -3,13 +3,17 @@ module Interpreter where
 import Ast
 import Control.Monad.State
 import ListUtils
+-- debug stuff
+import Debug.Trace
+debugTrace s = trace s $ return ()
 
 data Loc = Loc Int String
            deriving (Eq, Show)
 
 data Values = LocValue Loc
             | BValue BaseValue
-            deriving (Show) -- todo better
+            deriving (Show, Eq) -- todo better
+
 
 data EnvP   = EnvP String Values String Values
 data EnvF   = EnvF [(String, Values)]
@@ -165,14 +169,14 @@ runExpressionContinue =
       
 
 substitute :: String -> Expression -> Expression -> Expression
-substitute lbl e' (ExpressionSeq e1 e2)       = ExpressionSeq e1 $ substitute lbl e' e2
+substitute lbl e' (ExpressionSeq e1 e2)       = ExpressionSeq (substitute lbl e' e1 ) (substitute lbl e' e2)
 substitute lbl e' (ExpressionIf e1 e2 e3)     = ExpressionIf e1 (substitute lbl e' e2) (substitute lbl e' e3)
 substitute lbl e' e@(ExpressionContinue lbl') = if lbl' == lbl then e' else e
-substitute lbl _  e@(ExpressionAssign _ _)    = e
+substitute lbl _  e                           = e
 
 runExpressionLabel :: String -> Expression -> Runtime Values
 runExpressionLabel lbl e = 
-    do runExpression $ substitute lbl e e
+    do runExpression $ substitute lbl (ExpressionLabel lbl e) e
 
 runExpressionIf :: Expression -> Expression -> Expression -> Runtime Values
 runExpressionIf e1 e2 e3 = 
@@ -183,7 +187,8 @@ runExpressionIf e1 e2 e3 =
 
 initVal :: FieldType -> Values
 initVal (ClassFieldType cn) = BValue BaseNull
-initVal (BaseFieldType) = BValue $ BaseBool False
+initVal (BaseFieldType BoolType) = BValue $ BaseBool False
+initVal (BaseFieldType StringType) = BValue $ BaseString ""
 
 initField :: Field -> (String, Values)
 initField field = 
@@ -214,11 +219,19 @@ runExpressionAssign f e =
 
 runExpressionBinaryOperation :: BinaryOperator -> Expression -> Expression -> Runtime Values
 runExpressionBinaryOperation op e1 e2 = do
-    (BValue (BaseBool v1)) <- runExpression e1
-    (BValue (BaseBool v2)) <- runExpression e2
-    return $ BValue (BaseBool ((getBinaryOp op) v1 v2))
+    v1 <- runExpression e1
+    v2 <- runExpression e2
+    return $ BValue (doBinaryOp op v1 v2)
 
-getBinaryOp OpNEQ = (/=)
-getBinaryOp OpEQ = (==)
-getBinaryOp OpAnd = (&&)
-getBinaryOp OpOr = (||)
+doBinaryOp OpEQ v1 v2 = (BaseBool (v1 == v2))
+doBinaryOp OpNEQ v1 v2 = (BaseBool (v1 /= v2))
+doBinaryOp OpAnd v1 v2 = (BaseBool (v1 `andOp` v2))
+doBinaryOp OpOr v1 v2 = (BaseBool (v1 `orOp` v2))
+doBinaryOp OpAdd v1 v2 = (BaseInteger (intOp (+)  v1 v2))
+doBinaryOp OpSub v1 v2 = (BaseInteger (intOp (-)  v1 v2))
+
+
+andOp (BValue (BaseBool b1)) (BValue (BaseBool b2)) = b1 && b2
+orOp (BValue (BaseBool b1)) (BValue (BaseBool b2)) = b1 || b2
+
+intOp op (BValue (BaseInteger i1)) (BValue (BaseInteger i2)) = i1 `op` i2 

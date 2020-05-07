@@ -182,9 +182,11 @@ extractTypeFromValue (ValueReference ref) = extractTypeFromGamma $ getReferenceN
 baseValueToType :: BaseValue -> Type
 baseValueToType bv = 
     case bv of 
-        BaseUnit     -> VoidType
-        BaseNull     -> BotType
-        (BaseBool _) -> BoolType
+        BaseUnit       -> (BaseType VoidType)
+        BaseNull       -> BotType
+        (BaseBool _)   -> (BaseType BoolType)
+        (BaseString _) -> (BaseType StringType)
+        (BaseInteger _) -> (BaseType IntegerType)
 
 updateNameInGamma :: String -> Type -> DTypeSystem ()
 updateNameInGamma name type' = do 
@@ -218,8 +220,8 @@ isClassType BotType         = True
 isClassType (ClassType _ _) = True 
 isClassType _               = False
 
-
-isBoolType (BoolType) = True
+isBoolType :: Type -> Bool
+isBoolType (BaseType BoolType) = True
 isBoolType _          = False
 
 
@@ -242,16 +244,15 @@ getMethod' name = do
 ---
 
 term :: Type -> Bool
-term (BotType)       = True
-term (BoolType)      = True
-term (VoidType)      = True
+term BotType         = True
+term (BaseType t)    = True
 term (ClassType _ u) = term' (currentUsage u)
     where term' :: UsageImpl -> Bool
           term' (UsageEnd) = True
           term' _          = False
 
 agree :: FieldType -> Type -> Bool
-agree (BaseFieldType)      (BoolType)        = True 
+agree (BaseFieldType t1)   (BaseType t2)     = t1 == t2
 agree (ClassFieldType cn1) (ClassType cn2 u) = cn1 == cn2 
 agree (ClassFieldType cn1) (BotType)         = True
 agree _                    _                 = False
@@ -313,7 +314,7 @@ checkFld fieldname expression = do
         gammaResult <- getGamma
         state <- getMyState
         let state' = updateGammaInState state gammaResult
-        return [(state', VoidType)]
+        return [(state', (BaseType VoidType))]
 
 checkCall :: Reference -> MethodName -> Value -> Value -> NDTypeSystem ()
 checkCall r m v1 v2 = do
@@ -640,8 +641,8 @@ checkIf e1 e2 e3 = do
         let gammaFalse   = (name, (ClassType cn usageT)) : gamma'
         let myStateTrue  = updateGammaInState myState gammaTrue
         let myStateFalse = updateGammaInState myState gammaFalse
-        (_,  trueStates)  <- fromEitherM $ runState (checkExpression e2) [(myStateTrue, VoidType)]
-        (_, falseStates) <- fromEitherM $ runState (checkExpression e2) [(myStateFalse, VoidType)]
+        (_,  trueStates)  <- fromEitherM $ runState (checkExpression e2) [(myStateTrue, (BaseType VoidType))]
+        (_, falseStates) <- fromEitherM $ runState (checkExpression e2) [(myStateFalse, (BaseType VoidType))]
         return $ do
             (trueEnvs,  trueType)  <- trueStates  
             (falseEnvs, falseType) <- falseStates 
@@ -666,7 +667,7 @@ checkLab lbl e = forAll $ do
     let lbls' = (lbl,gamma):lbls
     state <- getMyState 
     let state' = updateOmegaInState state (Omega lbls')
-    return [(state', VoidType)]
+    return [(state', (BaseType VoidType))]
 
 checkCon :: LabelName -> NDTypeSystem ()
 checkCon lbl = forAll $ do
@@ -675,7 +676,7 @@ checkCon lbl = forAll $ do
     gamma <- getGamma
     assert' $ expectedGamma == gamma 
     s <- getMyState
-    return [(s, VoidType)]
+    return [(s, (BaseType VoidType))]
 
 convertNDToD :: NDTypeSystem () -> DTypeSystem [(MyState, Type)]
 convertNDToD nd = do 
@@ -696,21 +697,20 @@ checkBinaryExpression op e1 e2 = do
         ss <- convertNDToD $ checkExpression e2
         return $ [ (s, t'') 
                  | (s, t') <- ss, 
-                   t'' <- findType t t' 
+                   t'' <- findType t t'
                  ]
 
 
 operatorType :: BinaryOperator -> [(Type, Type, Type)]
-operatorType o = operatorType' o BoolType
+operatorType o = operatorType' o (BaseType BoolType) (BaseType StringType) (BaseType IntegerType)
 
-operatorType' o b = [(b, b, b)] 
-
---operatorType' o i b 
---    | o `elem` [OpLT, OpGT, OpGEQ, OpLEQ] = [(i, i, b)]
---    | o `elem` [OpAnd, OpOr]              = [(b, b, b)]
---    | o `elem` [OpEQ, OpNEQ]              = [(i, i, b),
---                                             (b, b, b)]
---    | otherwise                           = [(i, i, i)]
+operatorType' o b s i
+    | o `elem` [OpAnd, OpOr]              = [(b, b, b)]
+    | o `elem` [OpAdd, OpSub]             = [(i, i, i)]
+    | o `elem` [OpEQ, OpNEQ]              = [(s, s, b),
+                                             (b, b, b),
+                                             (i, i, b)]
+    | otherwise                           = []
 
 
 checkTUsage :: UsageImpl -> NDUsageState ()
@@ -923,4 +923,4 @@ terminatedEnv = all (term . snd)
 initFields :: [Field] -> Gamma
 initFields [] = []
 initFields ((Field (ClassFieldType cn) f):flds) = (f, BotType)  : initFields  flds
-initFields ((Field BaseFieldType f):flds)       = (f, BoolType) : initFields  flds
+initFields ((Field (BaseFieldType t) f):flds)   = (f, (BaseType t))   : initFields  flds

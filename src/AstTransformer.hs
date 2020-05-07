@@ -3,8 +3,9 @@ module AstTransformer where
 import Cst
 import Ast
 
-import Control.Monad (liftM2, when)
+import Control.Monad (liftM2, when, liftM)
 import Data.Either (partitionEithers)
+
 
 type Error a = Either [String] a
 
@@ -120,18 +121,20 @@ convertParameter g (CstParameter t1 t2 name) =
                     else combineErrors t1' t2' $ \t1'' t2'' -> (g', Parameter t1'' t2'' name)
 
 convertFieldType :: Definitions -> String -> Error FieldType
-convertFieldType g "bool" = Right BaseFieldType
+convertFieldType g "bool" = Right (BaseFieldType BoolType)
+convertFieldType g "string" = Right (BaseFieldType StringType)
+convertFieldType g "int" = Right (BaseFieldType IntegerType)
 convertFieldType g str    = 
     if g `classNameExists` str
         then Right $ ClassFieldType str
-        else Left $ ["Field of unknown type " ++ str]
+        else Left $ ["Field of unknown type '" ++ str]
     
 
 convertType :: Definitions -> CstType -> Error Type
 convertType g (CstSimpleType s)  =
     case s of 
-        "bool" -> Right $ BoolType
-        "void" -> Right $ VoidType
+        "bool" -> Right $ (BaseType BoolType)
+        "void" -> Right $ (BaseType VoidType)
         _      -> Left $ ["Unknown type " ++ s]
 convertType g (CstClassType c u) = 
     if g `classNameExists` c
@@ -150,6 +153,8 @@ convertExpression g (CstBinaryExpression op e1 e2) = convertBinaryExpression g o
 convertExpression g (CstExpressionLabel lbl e)     = convertLabelExpression g lbl e
 convertExpression g (CstExpressionContinue lbl)    = convertContinueExpression g lbl
 convertExpression g (CstExpressionBool b)          = convertBoolExpression g b
+convertExpression g (CstExpressionString s)        = convertStringExpression g s
+convertExpression g (CstExpressionInteger i)       = convertIntegerExpression g i
 convertExpression g (CstExpressionUnit)            = convertUnitExpression g
 convertExpression g (CstExpressionNull)            = convertNullExpression g
 convertExpression g (CstExpressionIdentifier id)   = convertExpressionIdentifier g id
@@ -210,6 +215,8 @@ convertOperator CstOpEQ = OpEQ
 convertOperator CstOpNEQ = OpNEQ
 convertOperator CstOpAnd = OpAnd
 convertOperator CstOpOr = OpOr
+convertOperator CstOpSub = OpSub
+convertOperator CstOpAdd = OpAdd
 
 
 convertLabelExpression :: Definitions -> String -> CstExpression -> Error Expression
@@ -217,7 +224,7 @@ convertLabelExpression g lbl e =
     let g' = g `insertLabel` lbl
     in if g `containsLabel` lbl
             then Left $ ["Label expression label " ++ lbl ++ " already exists"]
-            else convertExpression g' e
+            else liftM (ExpressionLabel lbl) (convertExpression g' e)
 
 convertContinueExpression :: Definitions -> String -> Error Expression
 convertContinueExpression g lbl = 
@@ -227,6 +234,12 @@ convertContinueExpression g lbl =
 
 convertBoolExpression :: Definitions -> Bool -> Error Expression
 convertBoolExpression g b = Right $ ExpressionValue (ValueBase (BaseBool b))
+
+convertStringExpression :: Definitions -> String -> Error Expression
+convertStringExpression g s = Right $ ExpressionValue (ValueBase (BaseString s))
+
+convertIntegerExpression :: Definitions -> Integer -> Error Expression
+convertIntegerExpression g i = Right $ ExpressionValue (ValueBase (BaseInteger i))
 
 convertUnitExpression :: Definitions -> Error Expression
 convertUnitExpression g = Right $ ExpressionValue (ValueBase (BaseUnit))
