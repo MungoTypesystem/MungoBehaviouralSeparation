@@ -33,21 +33,24 @@ data CstBinaryOperator = CstOpEQ
 
 data CstExpression = CstExpressionNew String
                    | CstExpressionAssign String CstExpression
-                   | CstExpressionCall String String String String
+                   | CstExpressionCall String String CstValue CstValue
                    | CstExpressionSeq CstExpression CstExpression
                    | CstExpressionIf CstExpression CstExpression CstExpression
                    | CstExpressionLabel String CstExpression
                    | CstExpressionContinue String
-                   | CstExpressionBool Bool
-                   | CstExpressionString String
-                   | CstExpressionInteger Integer
-                   | CstExpressionUnit
-                   | CstExpressionNull
-                   | CstExpressionIdentifier String
-                   | CstExpressionPrint String
+                   | CstExpressionValue CstValue
+                   | CstExpressionPrint CstValue
+                   | CstExpressionInput
                    | CstBinaryExpression CstBinaryOperator CstExpression CstExpression
                      deriving (Show)
-        
+
+data CstValue = CstBool Bool 
+              | CstString String
+              | CstInteger Integer
+              | CstUnit 
+              | CstNull
+              | CstReference String
+              deriving (Show)
 
 data CstUsage = CstUsageChoice CstUsage CstUsage
               | CstUsageBranch [(String, CstUsage)]

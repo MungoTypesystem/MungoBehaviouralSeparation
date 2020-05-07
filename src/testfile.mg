@@ -336,7 +336,7 @@ class main[{main; end}] {
     }
 }
 
-*/
+
 class BE [{e; <end, end>}] {
     bool e(bool b) {
         b
@@ -370,5 +370,61 @@ class main[{main; end}] {
         t = new testBinary;
         t.m(); 
         unit
+    }
+}
+
+
+class main[{main; end}] {
+    string f
+    void main() {
+        f = input();
+        print(f)
+    }
+}
+
+*/
+
+
+class File [{open; rec X.{isEmpty; <{close; end}, {read; X}>}}] {
+
+    string next
+    void open() {
+        print("opened")
+    }
+    
+    bool isEmpty() {
+        print("reading > ");
+        next = input();
+        next == ""
+    }
+
+    string read() {
+        next
+    }
+
+    void close() {
+        print("Closing")
+    }
+}
+
+
+
+class main[{main; end}] {
+    File f
+    string lastLine    
+    void main() {
+        f = new File;
+        f.open();
+        
+        (loop: 
+            if (f.isEmpty()) {
+                f.close()
+            } else {
+                lastLine = f.read();
+                print("Read");
+                print(lastLine);
+                continue loop
+            }
+        )
     }
 }

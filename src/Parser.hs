@@ -40,6 +40,7 @@ languageDef =
                                       , "class"
                                       , "end"
                                       , "print"
+                                      , "input"
                                       , "unit"
                                       , "null" ]
             , Token.reservedOpNames = ["=", ":", "==", "!=", "&&", "||", "+", "-"]
@@ -172,26 +173,33 @@ parseExpression' =   parens parseExpression
                  <|> parseIfExpression
                  <|> try parseLabelExpression
                  <|> parseContinueExpression
-                 <|> parseBoolExpression
-                 <|> parseStringExpression
-                 <|> parseIntegerExpression
-                 <|> parseUnitExpression
-                 <|> parseNullExpression
                  <|> try parsePrintExpression
-                 <|> parseIdentifierExpression
+                 <|> try parseInputExpression
+                 <|> parseValueExpression
 
-parseIdentifier' :: Parser String
-parseIdentifier' =   (reserved "true" >> return "true")
-                 <|> (reserved "false" >> return "false")
-                 <|> (reserved "null" >> return "null")
-                 <|> (reserved "unit" >> return "unit")
-                 <|> identifier
+parseValueExpression :: Parser CstExpression
+parseValueExpression = CstExpressionValue <$> parseValue
+
+parseValue :: Parser CstValue
+parseValue =   (reserved "true" >> return (CstBool True))
+                 <|> (reserved "false" >> return(CstBool False))
+                 <|> (reserved "null" >> return CstNull)
+                 <|> (reserved "unit" >> return CstUnit)
+                 <|> (CstString <$> strParser)
+                 <|> (CstInteger <$> int)
+                 <|> (CstReference <$> identifier)
                  
 parsePrintExpression :: Parser CstExpression
 parsePrintExpression =
     do reserved "print"
-       v <- parens parseIdentifier'
+       v <- parens parseValue
        return $ CstExpressionPrint v
+
+parseInputExpression :: Parser CstExpression
+parseInputExpression =
+    do reserved "input"
+       parens whiteSpace
+       return $ CstExpressionInput 
 
 parseNewExpression :: Parser CstExpression
 parseNewExpression =
@@ -213,13 +221,13 @@ parseCallExpression =
        m <- identifier
        (v1, v2) <- parens $ try fullParam <|> try halfParam <|> noParam
        return $ CstExpressionCall r m v1 v2
-    where fullParam = do v1 <- parseIdentifier'
+    where fullParam = do v1 <- parseValue
                          comma
-                         v2 <- parseIdentifier'
+                         v2 <- parseValue
                          return (v1, v2)
-          halfParam = do v1 <- parseIdentifier'
-                         return (v1, "unit")
-          noParam = return ("unit", "unit")
+          halfParam = do v1 <- parseValue
+                         return (v1, CstUnit)
+          noParam = return (CstUnit, CstUnit)
           
 
 parseIfExpression :: Parser CstExpression
@@ -244,30 +252,6 @@ parseContinueExpression =
        label <- identifier
        return $ CstExpressionContinue label
 
-parseBoolExpression :: Parser CstExpression
-parseBoolExpression =   (reserved "true"  >> return (CstExpressionBool True))
-                    <|> (reserved "false" >> return (CstExpressionBool False))
-
-parseStringExpression :: Parser CstExpression
-parseStringExpression = do
-   str <- strParser
-   return $ CstExpressionString str
-
-parseIntegerExpression :: Parser CstExpression
-parseIntegerExpression = do
-    many space
-    number <- int
-    many space
-    return $ CstExpressionInteger number
-
-parseUnitExpression :: Parser CstExpression
-parseUnitExpression = reserved "unit" >> return CstExpressionUnit
-
-parseNullExpression :: Parser CstExpression
-parseNullExpression = reserved "null" >> return CstExpressionNull
-
-parseIdentifierExpression :: Parser CstExpression
-parseIdentifierExpression = CstExpressionIdentifier <$> parseIdentifier' 
 
 parseUsage :: Parser CstUsage
 parseUsage =   try parseSeqUsage

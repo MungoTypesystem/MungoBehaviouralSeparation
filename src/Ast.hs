@@ -83,6 +83,7 @@ data Expression = ExpressionSeq Expression Expression
                 | ExpressionContinue LabelName
                 | ExpressionBinaryOperation BinaryOperator Expression Expression
                 | ExpressionPrint Value -- does not read value only prints it
+                | ExpressionInput 
                   deriving (Show)
 
 data BinaryOperator = OpEQ

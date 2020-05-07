@@ -280,7 +280,8 @@ choiceTransitions u =
 
 
 checkExpression :: Expression -> NDTypeSystem ()
-checkExpression (ExpressionPrint v)                  = return () -- does not change anything
+checkExpression (ExpressionPrint v)                  = checkPrint v 
+checkExpression ExpressionInput                      = checkInput
 checkExpression (ExpressionSeq e1 e2)                = checkSeq e1 e2
 checkExpression (ExpressionAssign f e)               = checkFld f e
 checkExpression (ExpressionCall r m v1 v2)           = checkCall r m v1 v2
@@ -291,11 +292,22 @@ checkExpression (ExpressionLabel lbl e)              = checkLab lbl e
 checkExpression (ExpressionContinue lbl)             = checkCon lbl
 checkExpression (ExpressionBinaryOperation op e1 e2) = checkBinaryExpression op e1 e2
 
+checkPrint :: Value -> NDTypeSystem ()
+checkPrint v = forAll $ do
+    s <- getMyState
+    return [(s, (BaseType VoidType))]
+
+checkInput :: NDTypeSystem ()
+checkInput = forAll $ do
+    s <- getMyState
+    return [(s, (BaseType StringType))]
+
 checkSeq :: Expression -> Expression -> NDTypeSystem ()
 checkSeq e1 e2 = do
     checkExpression e1
     forAll $ do 
         s <- getState
+        debugTrace $ show ((gamma . environments . fst) s)
         t <- getReturnType
         assert' $ term t
         return [s]
@@ -659,15 +671,17 @@ checkIf e1 e2 e3 = do
 
 
 checkLab :: LabelName -> Expression -> NDTypeSystem ()
-checkLab lbl e = forAll $ do
-    (Omega lbls) <- getOmega
-    let found = lbl `envLookupIn` lbls
-    assert' (isNothing found)
-    gamma <- getGamma
-    let lbls' = (lbl,gamma):lbls
-    state <- getMyState 
-    let state' = updateOmegaInState state (Omega lbls')
-    return [(state', (BaseType VoidType))]
+checkLab lbl e = do 
+    forAll $ do
+        (Omega lbls) <- getOmega
+        let found = lbl `envLookupIn` lbls
+        assert' (isNothing found)
+        gamma <- getGamma
+        let lbls' = (lbl,gamma):lbls
+        state <- getMyState 
+        let state' = updateOmegaInState state (Omega lbls')
+        return [(state', (BaseType VoidType))]
+    checkExpression e
 
 checkCon :: LabelName -> NDTypeSystem ()
 checkCon lbl = forAll $ do

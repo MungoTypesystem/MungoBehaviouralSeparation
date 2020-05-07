@@ -102,12 +102,8 @@ convertMethod g m =
        (g'', parameter2) <- convertParameter g' cstParameter2
        retType           <- convertType g'' (cstMethodType m)
        e                 <- convertExpression g'' (cstMethodExpression m)
-       when (isPrintExpression e) $ Left ["method body of "++ name ++ " cannot only be print"]
 
        Right $ Method retType name parameter1 parameter2 e
-
-isPrintExpression (ExpressionPrint _) = True
-isPrintExpression _                   = False
 
 convertParameter :: Definitions -> CstParameter -> Error (Definitions, Parameter)
 convertParameter g (CstParameter t1 t2 name) = 
@@ -133,9 +129,11 @@ convertFieldType g str    =
 convertType :: Definitions -> CstType -> Error Type
 convertType g (CstSimpleType s)  =
     case s of 
-        "bool" -> Right $ (BaseType BoolType)
-        "void" -> Right $ (BaseType VoidType)
-        _      -> Left $ ["Unknown type " ++ s]
+        "bool"   -> Right $ (BaseType BoolType)
+        "void"   -> Right $ (BaseType VoidType)
+        "string" -> Right $ (BaseType StringType)
+        "int"    -> Right $ (BaseType IntegerType)
+        _        -> Left $ ["Unknown type " ++ s]
 convertType g (CstClassType c u) = 
     if g `classNameExists` c
         then ClassType c <$> convertFullUsage u
@@ -144,6 +142,7 @@ convertType g (CstClassType c u) =
 
 convertExpression :: Definitions -> CstExpression -> Error Expression
 convertExpression g (CstExpressionPrint v)         = convertPrintExpression g v 
+convertExpression g CstExpressionInput             = convertInputExpression g 
 convertExpression g (CstExpressionNew name)        = convertNewExpression g name
 convertExpression g (CstExpressionAssign fname e)  = convertAssignExpression g fname e
 convertExpression g (CstExpressionCall r m v1 v2)  = convertCallExpression g r m v1 v2
@@ -152,15 +151,24 @@ convertExpression g (CstExpressionIf e1 e2 e3)     = convertIfExpression g e1 e2
 convertExpression g (CstBinaryExpression op e1 e2) = convertBinaryExpression g op e1 e2
 convertExpression g (CstExpressionLabel lbl e)     = convertLabelExpression g lbl e
 convertExpression g (CstExpressionContinue lbl)    = convertContinueExpression g lbl
-convertExpression g (CstExpressionBool b)          = convertBoolExpression g b
-convertExpression g (CstExpressionString s)        = convertStringExpression g s
-convertExpression g (CstExpressionInteger i)       = convertIntegerExpression g i
-convertExpression g (CstExpressionUnit)            = convertUnitExpression g
-convertExpression g (CstExpressionNull)            = convertNullExpression g
-convertExpression g (CstExpressionIdentifier id)   = convertExpressionIdentifier g id
+convertExpression g (CstExpressionValue val)       = convertValueExpression g val
 
-convertPrintExpression :: Definitions -> String -> Error Expression
+convertValueExpression :: Definitions -> CstValue -> Error Expression
+convertValueExpression g val = ExpressionValue <$> convertValue g val
+
+convertValue :: Definitions -> CstValue -> Error Value 
+convertValue g (CstBool b) = Right $ ValueBase (BaseBool b)
+convertValue g (CstString s) = Right $ ValueBase (BaseString s)
+convertValue g (CstInteger i) = Right $ ValueBase (BaseInteger i)
+convertValue g CstUnit = Right $ ValueBase BaseUnit
+convertValue g CstNull = Right $ ValueBase BaseNull
+convertValue g (CstReference id) = ValueReference <$> convertReference g id
+
+convertPrintExpression :: Definitions -> CstValue -> Error Expression
 convertPrintExpression g v = ExpressionPrint <$> convertValue g v
+
+convertInputExpression :: Definitions -> Error Expression
+convertInputExpression g = return ExpressionInput 
 
 convertNewExpression :: Definitions -> String -> Error Expression
 convertNewExpression g name = 
@@ -175,7 +183,7 @@ convertAssignExpression g fname e =
         then ExpressionAssign fname <$> e'
         else Left $ ["Assign expression unable to find field " ++ fname]
 
-convertCallExpression :: Definitions -> String -> String -> String -> String -> Error Expression
+convertCallExpression :: Definitions -> String -> String -> CstValue -> CstValue -> Error Expression
 convertCallExpression g r m v1 v2 = 
     let r'           = convertReference g r
         v1'          = convertValue g v1
@@ -232,23 +240,6 @@ convertContinueExpression g lbl =
         then Right $ ExpressionContinue lbl
         else Left $ ["Continue expression label " ++ lbl ++ " does not exist"]
 
-convertBoolExpression :: Definitions -> Bool -> Error Expression
-convertBoolExpression g b = Right $ ExpressionValue (ValueBase (BaseBool b))
-
-convertStringExpression :: Definitions -> String -> Error Expression
-convertStringExpression g s = Right $ ExpressionValue (ValueBase (BaseString s))
-
-convertIntegerExpression :: Definitions -> Integer -> Error Expression
-convertIntegerExpression g i = Right $ ExpressionValue (ValueBase (BaseInteger i))
-
-convertUnitExpression :: Definitions -> Error Expression
-convertUnitExpression g = Right $ ExpressionValue (ValueBase (BaseUnit))
-
-convertNullExpression :: Definitions -> Error Expression
-convertNullExpression g = Right $ ExpressionValue (ValueBase (BaseNull))
-
-convertExpressionIdentifier :: Definitions -> String -> Error Expression
-convertExpressionIdentifier g str = ExpressionValue <$> convertValue g str
 
 convertReference :: Definitions -> String -> Error Reference
 convertReference g r = 
@@ -258,14 +249,6 @@ convertReference g r =
                 then Right $ RefParameter r
                 else Left $ ["Unable to find field or parameter " ++ r]
 
-convertValue :: Definitions -> String -> Error Value
-convertValue g v = 
-    case v of
-        "true"  -> Right $ ValueBase (BaseBool True)
-        "false" -> Right $ ValueBase (BaseBool False)
-        "null"  -> Right $ ValueBase BaseNull
-        "unit"  -> Right $ ValueBase BaseUnit
-        _       -> ValueReference <$> convertReference g v
 
 
 convertFullUsage :: CstUsage -> Error Usage

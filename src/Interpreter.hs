@@ -12,7 +12,16 @@ data Loc = Loc Int String
 
 data Values = LocValue Loc
             | BValue BaseValue
-            deriving (Show, Eq) -- todo better
+            deriving (Eq)
+
+
+instance Show Values where
+    show (BValue (BaseString s)) = s
+    show (BValue BaseNull) = "null"
+    show (BValue BaseUnit) = "unit"
+    show (BValue (BaseInteger i)) = show i
+    show (BValue (BaseBool b)) = show b
+    show (LocValue (Loc i c)) = c ++ "{" ++ show i ++ "}"
 
 
 data EnvP   = EnvP String Values String Values
@@ -134,6 +143,7 @@ runExpression (ExpressionIf e1 e2 e3)              = runExpressionIf e1 e2 e3
 runExpression (ExpressionLabel lbl e)              = runExpressionLabel lbl e
 runExpression (ExpressionContinue _)               = runExpressionContinue
 runExpression (ExpressionPrint v)                  = runExpressionPrint v
+runExpression ExpressionInput                      = runExpressionInput
 runExpression (ExpressionBinaryOperation op e1 e2) = runExpressionBinaryOperation op e1 e2
 
 runExpressionPrint :: Value -> Runtime Values
@@ -141,6 +151,11 @@ runExpressionPrint v =
     do v' <- runExpressionValue v 
        io . putStrLn $ show v'
        return $ BValue BaseUnit
+
+runExpressionInput :: Runtime Values
+runExpressionInput = do
+    text <- io getLine
+    return $ BValue (BaseString text) 
 
 runExpressionCall :: Reference -> String -> Value -> Value -> Runtime Values
 runExpressionCall r m v1 v2 = 
