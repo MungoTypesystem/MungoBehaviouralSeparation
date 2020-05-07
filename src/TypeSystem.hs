@@ -307,7 +307,6 @@ checkSeq e1 e2 = do
     checkExpression e1
     forAll $ do 
         s <- getState
-        debugTrace $ show ((gamma . environments . fst) s)
         t <- getReturnType
         assert' $ term t
         return [s]

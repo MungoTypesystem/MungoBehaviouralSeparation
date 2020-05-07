@@ -1,29 +1,42 @@
-class File {
-    {open; rec X.{isEmpty; <{close; end}, {readChar; X}>}}
+class File [{open; rec X.{isEmpty; <{close; end}, {read; X}>}}] {
 
-
-    bool isEmpty(void->void x, void->void x2) {
-        true
+    string next
+    void open() {
+        print("opened")
+    }
+    
+    bool isEmpty() {
+        print("reading > ");
+        next = input();
+        next == ""
     }
 
-    bool readChar(void->void x, void->void x2) {false}
-    void close(void->void x, void->void x2) {unit}
-    void open(void->void x, void->void x2) {unit}
+    string read() {
+        next
+    }
+
+    void close() {
+        print("Closing")
+    }
 }
 
-class FileReader {
-    {readFile; end}
 
+
+class main[{main; end}] {
     File f
-
-    void readFile(void->void x, void->void x2) {
+    string lastLine    
+    void main() {
         f = new File;
-        f.open(unit, unit);
-        loop: if (f.isEmpty(unit, unit)) {
-                f.close(unit, unit)
-              } else {
-                 f.readChar(unit, unit);
-                 continue loop
-              }
+        f.open();
+        (loop: 
+            if (f.isEmpty()) {
+                f.close()
+            } else {
+                lastLine = f.read();
+                print("Read");
+                print(lastLine);
+                continue loop
+            }
+        )
     }
 }
