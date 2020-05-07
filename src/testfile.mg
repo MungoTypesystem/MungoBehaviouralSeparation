@@ -337,3 +337,24 @@ class main[{main; end}] {
 }
 
 
+
+
+/*
+class testBinary[{m; end}] {
+    bool f
+    void m() {
+        f = (false == true == true != false && true || false);
+        print(f); 
+        unit
+    }
+}
+
+class main[{main; end}] {
+    testBinary t
+    void main() {
+        t = new testBinary;
+        t.m(); 
+        unit
+    }
+}
+*/

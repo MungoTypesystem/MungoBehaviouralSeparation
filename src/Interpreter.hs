@@ -121,15 +121,16 @@ newLoc cn =
        return loc
 
 runExpression :: Expression -> Runtime Values
-runExpression (ExpressionSeq e1 e2)      = runExpression e1 >> runExpression e2
-runExpression (ExpressionAssign f e)     = runExpressionAssign f e
-runExpression (ExpressionCall r m v1 v2) = runExpressionCall r m v1 v2
-runExpression (ExpressionValue val)      = runExpressionValue val
-runExpression (ExpressionNew cn)         = runExpressionNew cn
-runExpression (ExpressionIf e1 e2 e3)    = runExpressionIf e1 e2 e3
-runExpression (ExpressionLabel lbl e)    = runExpressionLabel lbl e
-runExpression (ExpressionContinue _)     = runExpressionContinue
-runExpression (ExpressionPrint v)        = runExpressionPrint v
+runExpression (ExpressionSeq e1 e2)                = runExpression e1 >> runExpression e2
+runExpression (ExpressionAssign f e)               = runExpressionAssign f e
+runExpression (ExpressionCall r m v1 v2)           = runExpressionCall r m v1 v2
+runExpression (ExpressionValue val)                = runExpressionValue val
+runExpression (ExpressionNew cn)                   = runExpressionNew cn
+runExpression (ExpressionIf e1 e2 e3)              = runExpressionIf e1 e2 e3
+runExpression (ExpressionLabel lbl e)              = runExpressionLabel lbl e
+runExpression (ExpressionContinue _)               = runExpressionContinue
+runExpression (ExpressionPrint v)                  = runExpressionPrint v
+runExpression (ExpressionBinaryOperation op e1 e2) = runExpressionBinaryOperation op e1 e2
 
 runExpressionPrint :: Value -> Runtime Values
 runExpressionPrint v =
@@ -211,3 +212,13 @@ runExpressionAssign f e =
        writeField f v
        return $ BValue (BaseUnit) 
 
+runExpressionBinaryOperation :: BinaryOperator -> Expression -> Expression -> Runtime Values
+runExpressionBinaryOperation op e1 e2 = do
+    (BValue (BaseBool v1)) <- runExpression e1
+    (BValue (BaseBool v2)) <- runExpression e2
+    return $ BValue (BaseBool ((getBinaryOp op) v1 v2))
+
+getBinaryOp OpNEQ = (/=)
+getBinaryOp OpEQ = (==)
+getBinaryOp OpAnd = (&&)
+getBinaryOp OpOr = (||)

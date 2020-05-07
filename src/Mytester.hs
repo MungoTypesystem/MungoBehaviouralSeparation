@@ -4,7 +4,7 @@ import Cst
 import Ast
 import Parser
 import AstTransformer
-import Typesystem
+import TypeSystem
 import Data.Either (either)
 import Control.Monad (mapM_, guard, when)
 import Data.List (permutations, nub)

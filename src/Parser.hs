@@ -41,7 +41,7 @@ languageDef =
                                       , "print"
                                       , "unit"
                                       , "null" ]
-            , Token.reservedOpNames = ["=", ":"]
+            , Token.reservedOpNames = ["=", ":", "==", "!=", "&&", "||"]
             }
 
 lexer = Token.makeTokenParser languageDef
@@ -133,16 +133,36 @@ parseType =   try parseClassType
 
 parseExpression :: Parser CstExpression
 parseExpression =   parseSeqExpression
-                <|> parseExpression'
+                <|> parseExpression''
+
+parseExpression'' = try parseBinaryExpression
+                  <|> parseExpression'
 
 parseSeqExpression :: Parser CstExpression
-parseSeqExpression = unfoldSeqExpression <$> sepBy1 parseExpression' semi 
+parseSeqExpression = unfoldSeqExpression <$> sepBy1 parseExpression'' semi 
     where unfoldSeqExpression :: [CstExpression] -> CstExpression
           unfoldSeqExpression [x]    = x
           unfoldSeqExpression (x:xs) = CstExpressionSeq x (unfoldSeqExpression xs)
 
+parseBinaryExpression :: Parser CstExpression
+parseBinaryExpression = do 
+   e1 <- parseExpression'
+   whiteSpace
+   op <- parseBinaryOperator
+   e2 <- parseExpression''
+   return $ CstBinaryExpression op e1 e2
+
+
+parseBinaryOperator :: Parser CstBinaryOperator
+parseBinaryOperator = 
+       (reservedOp "==" >> return CstOpEQ)
+   <|> (reservedOp "!=" >> return CstOpNEQ)
+   <|> (reservedOp "&&" >> return CstOpAnd)
+   <|> (reservedOp "||" >> return CstOpOr)
+
 parseExpression' :: Parser CstExpression
-parseExpression' = parseNewExpression
+parseExpression' =   parens parseExpression
+                 <|> parseNewExpression
                  <|> try parseAssignExpression
                  <|> try parseCallExpression
                  <|> parseIfExpression

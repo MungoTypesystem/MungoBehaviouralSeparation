@@ -140,18 +140,19 @@ convertType g (CstClassType c u) =
     
 
 convertExpression :: Definitions -> CstExpression -> Error Expression
-convertExpression g (CstExpressionPrint v)        = convertPrintExpression g v 
-convertExpression g (CstExpressionNew name)       = convertNewExpression g name
-convertExpression g (CstExpressionAssign fname e) = convertAssignExpression g fname e
-convertExpression g (CstExpressionCall r m v1 v2) = convertCallExpression g r m v1 v2
-convertExpression g (CstExpressionSeq e1 e2)      = convertSeqExpression g e1 e2
-convertExpression g (CstExpressionIf e1 e2 e3)    = convertIfExpression g e1 e2 e3
-convertExpression g (CstExpressionLabel lbl e)    = convertLabelExpression g lbl e
-convertExpression g (CstExpressionContinue lbl)   = convertContinueExpression g lbl
-convertExpression g (CstExpressionBool b)         = convertBoolExpression g b
-convertExpression g (CstExpressionUnit)           = convertUnitExpression g
-convertExpression g (CstExpressionNull)           = convertNullExpression g
-convertExpression g (CstExpressionIdentifier id)  = convertExpressionIdentifier g id
+convertExpression g (CstExpressionPrint v)         = convertPrintExpression g v 
+convertExpression g (CstExpressionNew name)        = convertNewExpression g name
+convertExpression g (CstExpressionAssign fname e)  = convertAssignExpression g fname e
+convertExpression g (CstExpressionCall r m v1 v2)  = convertCallExpression g r m v1 v2
+convertExpression g (CstExpressionSeq e1 e2)       = convertSeqExpression g e1 e2
+convertExpression g (CstExpressionIf e1 e2 e3)     = convertIfExpression g e1 e2 e3
+convertExpression g (CstBinaryExpression op e1 e2) = convertBinaryExpression g op e1 e2
+convertExpression g (CstExpressionLabel lbl e)     = convertLabelExpression g lbl e
+convertExpression g (CstExpressionContinue lbl)    = convertContinueExpression g lbl
+convertExpression g (CstExpressionBool b)          = convertBoolExpression g b
+convertExpression g (CstExpressionUnit)            = convertUnitExpression g
+convertExpression g (CstExpressionNull)            = convertNullExpression g
+convertExpression g (CstExpressionIdentifier id)   = convertExpressionIdentifier g id
 
 convertPrintExpression :: Definitions -> String -> Error Expression
 convertPrintExpression g v = ExpressionPrint <$> convertValue g v
@@ -196,6 +197,20 @@ convertIfExpression g e1 e2 e3 =
     in if null l
             then Right $ ExpressionIf e1'' e2'' e3''
             else Left $ concat l
+
+convertBinaryExpression :: Definitions -> CstBinaryOperator -> CstExpression -> CstExpression -> Error Expression 
+convertBinaryExpression g op e1 e2 = 
+    let e1' = convertExpression g e1
+        e2' = convertExpression g e2
+        op' = convertOperator op
+    in combineErrors e1' e2' (ExpressionBinaryOperation op')
+
+convertOperator :: CstBinaryOperator -> BinaryOperator
+convertOperator CstOpEQ = OpEQ
+convertOperator CstOpNEQ = OpNEQ
+convertOperator CstOpAnd = OpAnd
+convertOperator CstOpOr = OpOr
+
 
 convertLabelExpression :: Definitions -> String -> CstExpression -> Error Expression
 convertLabelExpression g lbl e =

@@ -23,6 +23,12 @@ data CstType = CstSimpleType String
              | CstClassType String CstUsage
                deriving (Show)
 
+
+data CstBinaryOperator = CstOpEQ
+                       | CstOpAnd
+                       | CstOpOr
+                       | CstOpNEQ deriving (Show)
+
 data CstExpression = CstExpressionNew String
                    | CstExpressionAssign String CstExpression
                    | CstExpressionCall String String String String
@@ -35,6 +41,7 @@ data CstExpression = CstExpressionNew String
                    | CstExpressionNull
                    | CstExpressionIdentifier String
                    | CstExpressionPrint String
+                   | CstBinaryExpression CstBinaryOperator CstExpression CstExpression
                      deriving (Show)
         
 

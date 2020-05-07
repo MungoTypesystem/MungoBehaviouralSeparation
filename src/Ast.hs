@@ -74,8 +74,14 @@ data Expression = ExpressionSeq Expression Expression
                 | ExpressionIf Expression Expression Expression
                 | ExpressionLabel LabelName Expression
                 | ExpressionContinue LabelName
+                | ExpressionBinaryOperation BinaryOperator Expression Expression
                 | ExpressionPrint Value -- does not read value only prints it
                   deriving (Show)
+
+data BinaryOperator = OpEQ
+                    | OpAnd
+                    | OpOr
+                    | OpNEQ deriving (Show)
 
 -- U
 data Usage = Usage { currentUsage :: UsageImpl

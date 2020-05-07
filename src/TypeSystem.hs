@@ -1,4 +1,4 @@
-module Typesystem where
+module TypeSystem where
 
 import Ast
 import StateErrorMonad
@@ -279,15 +279,16 @@ choiceTransitions u =
 
 
 checkExpression :: Expression -> NDTypeSystem ()
-checkExpression (ExpressionPrint v)        = return () -- does not change anything
-checkExpression (ExpressionSeq e1 e2)      = checkSeq e1 e2
-checkExpression (ExpressionAssign f e)     = checkFld f e
-checkExpression (ExpressionCall r m v1 v2) = checkCall r m v1 v2
-checkExpression (ExpressionValue v)        = checkVal v
-checkExpression (ExpressionNew name)       = checkNew name
-checkExpression (ExpressionIf e1 e2 e3)    = checkIf e1 e2 e3
-checkExpression (ExpressionLabel lbl e)    = checkLab lbl e
-checkExpression (ExpressionContinue lbl)   = checkCon lbl
+checkExpression (ExpressionPrint v)                  = return () -- does not change anything
+checkExpression (ExpressionSeq e1 e2)                = checkSeq e1 e2
+checkExpression (ExpressionAssign f e)               = checkFld f e
+checkExpression (ExpressionCall r m v1 v2)           = checkCall r m v1 v2
+checkExpression (ExpressionValue v)                  = checkVal v
+checkExpression (ExpressionNew name)                 = checkNew name
+checkExpression (ExpressionIf e1 e2 e3)              = checkIf e1 e2 e3
+checkExpression (ExpressionLabel lbl e)              = checkLab lbl e
+checkExpression (ExpressionContinue lbl)             = checkCon lbl
+checkExpression (ExpressionBinaryOperation op e1 e2) = checkBinaryExpression op e1 e2
 
 checkSeq :: Expression -> Expression -> NDTypeSystem ()
 checkSeq e1 e2 = do
@@ -675,6 +676,42 @@ checkCon lbl = forAll $ do
     assert' $ expectedGamma == gamma 
     s <- getMyState
     return [(s, VoidType)]
+
+convertNDToD :: NDTypeSystem () -> DTypeSystem [(MyState, Type)]
+convertNDToD nd = do 
+    s <- getState
+    (a, newStates) <- fromEitherM $ runState nd [s]
+    return $ newStates
+
+
+checkBinaryExpression :: BinaryOperator -> Expression -> Expression -> NDTypeSystem ()
+checkBinaryExpression op e1 e2 = do
+    let types = operatorType op
+    let thd (x, y, z) = z
+    let findType t t' = 
+            map thd $ filter (\(t1, t1', t1'') -> t == t1 && t' == t1') types
+    checkExpression e1
+    forAll $ do
+        t <- getReturnType
+        ss <- convertNDToD $ checkExpression e2
+        return $ [ (s, t'') 
+                 | (s, t') <- ss, 
+                   t'' <- findType t t' 
+                 ]
+
+
+operatorType :: BinaryOperator -> [(Type, Type, Type)]
+operatorType o = operatorType' o BoolType
+
+operatorType' o b = [(b, b, b)] 
+
+--operatorType' o i b 
+--    | o `elem` [OpLT, OpGT, OpGEQ, OpLEQ] = [(i, i, b)]
+--    | o `elem` [OpAnd, OpOr]              = [(b, b, b)]
+--    | o `elem` [OpEQ, OpNEQ]              = [(i, i, b),
+--                                             (b, b, b)]
+--    | otherwise                           = [(i, i, i)]
+
 
 checkTUsage :: UsageImpl -> NDUsageState ()
 checkTUsage usage =
