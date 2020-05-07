@@ -37,7 +37,7 @@ data Method = Method { returnType :: Type
 
 data Parameter = Parameter { parameterFrom  :: Type
                            , parameterTo    :: Type
-                           , paramenterName :: String
+                           , parameterName :: String
                            } deriving (Show)
 
 -- r (references)
@@ -74,6 +74,7 @@ data Expression = ExpressionSeq Expression Expression
                 | ExpressionIf Expression Expression Expression
                 | ExpressionLabel LabelName Expression
                 | ExpressionContinue LabelName
+                | ExpressionPrint Value -- does not read value only prints it
                   deriving (Show)
 
 -- U

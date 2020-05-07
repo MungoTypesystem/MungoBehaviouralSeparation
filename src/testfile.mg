@@ -323,4 +323,17 @@ class testWeirdUsage2[{m; end} ; {m; end}] {
     }
 }
 
+class main[{main; end}] {
+
+    testSeqCallsOnParallel f
+
+    void main() {
+        f = new testSeqCallsOnParallel;
+        f.setup();
+        f.m();
+        print(true);
+        unit
+    }
+}
+
 

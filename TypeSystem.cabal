@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 42f0ad8e0a591645d7ca3203349dc35fbd9b9e13f99e0b41103c03bcb933f13f
+-- hash: a0ce1bc2106ed81d2bf6bcb335703f4e47ce03ec9d35682f73d756aa94bab495
 
 name:           TypeSystem
 version:        0.1.0.0
@@ -29,7 +29,9 @@ library
       Ast
       AstTransformer
       Cst
+      Interpreter
       Lib
+      ListUtils
       Mytester
       Parser
       StateErrorMonad
@@ -41,6 +43,7 @@ library
   build-depends:
       base >=4.7 && <5
     , containers
+    , mtl
     , parsec >=3.1.11 && <4
   default-language: Haskell2010
 
@@ -55,6 +58,7 @@ executable TypeSystem-exe
       TypeSystem
     , base >=4.7 && <5
     , containers
+    , mtl
     , parsec >=3.1.11 && <4
   default-language: Haskell2010
 
@@ -70,5 +74,6 @@ test-suite TypeSystem-test
       TypeSystem
     , base >=4.7 && <5
     , containers
+    , mtl
     , parsec >=3.1.11 && <4
   default-language: Haskell2010

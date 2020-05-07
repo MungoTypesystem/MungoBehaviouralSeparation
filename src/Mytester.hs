@@ -6,8 +6,9 @@ import Parser
 import AstTransformer
 import Typesystem
 import Data.Either (either)
-import Control.Monad (mapM_, guard)
+import Control.Monad (mapM_, guard, when)
 import Data.List (permutations, nub)
+import Interpreter 
 
 run :: IO () 
 run = do
@@ -31,9 +32,29 @@ printAst program = do
     --mapM_ (putStrLn . show) program
     putStrLn "------------------------------"
     let typeChecked = checkTProg program
-    putStrLn $ case typeChecked of
-                    Left err -> show err
-                    Right _  -> "program checked successfully"
+    case typeChecked of
+            Left err -> putStrLn $ show err
+            Right _  -> do putStrLn "program checked successfully" 
+                           runMain program
+
+runMain program = do
+    putStrLn "------------------------------"
+    -- find the class with the main function
+    let cls = filter ((== "main") . className) program
+
+    when (length cls /= 1) $ do
+        putStrLn "could not find main class"
+
+    when (length cls == 1) $ do
+        let cls' = head cls
+        let mthd = filter ((== "main") . methodName) (classMethods cls')
+        when (length mthd /= 1) $ do
+            putStrLn "could not find main method"
+        
+        when (length mthd == 1) $ do
+            let mthd' = head mthd
+            runProgram program cls' mthd'
+    
 
 (Right u1) = testParseUsage "rec X. {m; <end, X>}"
 (Right u1') = convertUsage u1 []

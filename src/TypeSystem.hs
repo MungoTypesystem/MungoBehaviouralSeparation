@@ -279,6 +279,7 @@ choiceTransitions u =
 
 
 checkExpression :: Expression -> NDTypeSystem ()
+checkExpression (ExpressionPrint v)        = return () -- does not change anything
 checkExpression (ExpressionSeq e1 e2)      = checkSeq e1 e2
 checkExpression (ExpressionAssign f e)     = checkFld f e
 checkExpression (ExpressionCall r m v1 v2) = checkCall r m v1 v2

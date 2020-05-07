@@ -34,6 +34,7 @@ data CstExpression = CstExpressionNew String
                    | CstExpressionUnit
                    | CstExpressionNull
                    | CstExpressionIdentifier String
+                   | CstExpressionPrint String
                      deriving (Show)
         
 

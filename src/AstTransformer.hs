@@ -3,7 +3,7 @@ module AstTransformer where
 import Cst
 import Ast
 
-import Control.Monad (liftM2)
+import Control.Monad (liftM2, when)
 import Data.Either (partitionEithers)
 
 type Error a = Either [String] a
@@ -101,9 +101,12 @@ convertMethod g m =
        (g'', parameter2) <- convertParameter g' cstParameter2
        retType           <- convertType g'' (cstMethodType m)
        e                 <- convertExpression g'' (cstMethodExpression m)
+       when (isPrintExpression e) $ Left ["method body of "++ name ++ " cannot only be print"]
 
        Right $ Method retType name parameter1 parameter2 e
 
+isPrintExpression (ExpressionPrint _) = True
+isPrintExpression _                   = False
 
 convertParameter :: Definitions -> CstParameter -> Error (Definitions, Parameter)
 convertParameter g (CstParameter t1 t2 name) = 
@@ -137,6 +140,7 @@ convertType g (CstClassType c u) =
     
 
 convertExpression :: Definitions -> CstExpression -> Error Expression
+convertExpression g (CstExpressionPrint v)        = convertPrintExpression g v 
 convertExpression g (CstExpressionNew name)       = convertNewExpression g name
 convertExpression g (CstExpressionAssign fname e) = convertAssignExpression g fname e
 convertExpression g (CstExpressionCall r m v1 v2) = convertCallExpression g r m v1 v2
@@ -148,6 +152,9 @@ convertExpression g (CstExpressionBool b)         = convertBoolExpression g b
 convertExpression g (CstExpressionUnit)           = convertUnitExpression g
 convertExpression g (CstExpressionNull)           = convertNullExpression g
 convertExpression g (CstExpressionIdentifier id)  = convertExpressionIdentifier g id
+
+convertPrintExpression :: Definitions -> String -> Error Expression
+convertPrintExpression g v = ExpressionPrint <$> convertValue g v
 
 convertNewExpression :: Definitions -> String -> Error Expression
 convertNewExpression g name = 

@@ -37,7 +37,10 @@ languageDef =
                                       , "new"
                                       , "rec"
                                       , "class"
-                                      , "end"]
+                                      , "end"
+                                      , "print"
+                                      , "unit"
+                                      , "null" ]
             , Token.reservedOpNames = ["=", ":"]
             }
 
@@ -139,7 +142,7 @@ parseSeqExpression = unfoldSeqExpression <$> sepBy1 parseExpression' semi
           unfoldSeqExpression (x:xs) = CstExpressionSeq x (unfoldSeqExpression xs)
 
 parseExpression' :: Parser CstExpression
-parseExpression' =   parseNewExpression
+parseExpression' = parseNewExpression
                  <|> try parseAssignExpression
                  <|> try parseCallExpression
                  <|> parseIfExpression
@@ -148,8 +151,21 @@ parseExpression' =   parseNewExpression
                  <|> parseBoolExpression
                  <|> parseUnitExpression
                  <|> parseNullExpression
+                 <|> try parsePrintExpression
                  <|> parseIdentifierExpression
 
+parseIdentifier' :: Parser String
+parseIdentifier' =   (reserved "true" >> return "true")
+                 <|> (reserved "false" >> return "false")
+                 <|> (reserved "null" >> return "null")
+                 <|> (reserved "unit" >> return "unit")
+                 <|> identifier
+                 
+parsePrintExpression :: Parser CstExpression
+parsePrintExpression =
+    do reserved "print"
+       v <- parens parseIdentifier'
+       return $ CstExpressionPrint v
 
 parseNewExpression :: Parser CstExpression
 parseNewExpression =
@@ -171,15 +187,14 @@ parseCallExpression =
        m <- identifier
        (v1, v2) <- parens $ try fullParam <|> try halfParam <|> noParam
        return $ CstExpressionCall r m v1 v2
-    where fullParam = do v1 <- identifier
+    where fullParam = do v1 <- parseIdentifier'
                          comma
-                         v2 <- identifier
+                         v2 <- parseIdentifier'
                          return (v1, v2)
-          halfParam = do v1 <- identifier
+          halfParam = do v1 <- parseIdentifier'
                          return (v1, "unit")
           noParam = return ("unit", "unit")
           
-
 
 parseIfExpression :: Parser CstExpression
 parseIfExpression = 
@@ -214,7 +229,7 @@ parseNullExpression :: Parser CstExpression
 parseNullExpression = reserved "null" >> return CstExpressionNull
 
 parseIdentifierExpression :: Parser CstExpression
-parseIdentifierExpression = CstExpressionIdentifier <$> identifier
+parseIdentifierExpression = CstExpressionIdentifier <$> parseIdentifier' 
 
 parseUsage :: Parser CstUsage
 parseUsage =   try parseSeqUsage
