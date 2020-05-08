@@ -57,13 +57,13 @@ class HouseController [
     { initTempController; 
         rec D. {
             setTemperature; D
-            turnOff; end}}
+            turnTempOff; end}}
     |
     { initDoorController; 
         rec E. {
             lockDoors; E
             unlockDoors; E
-            turnOff; end }}
+            turnDoorOff; end }}
     ).end
     ] {
     LightController lc
@@ -98,7 +98,7 @@ class HouseController [
         tc.set(x)
     }
 
-    void turnOff() {
+    void turnTempOff() {
         tc.off()
     }
 
@@ -110,7 +110,7 @@ class HouseController [
         dc.unlock()
     }
 
-    void turnOff() {
+    void turnDoorOff() {
         dc.off()
     }
 }
