@@ -63,8 +63,8 @@ class HouseController [
         rec E. {
             lockDoors; E
             unlockDoors; E
-            turnDoorOff; end }}
-    ).end
+            turnDoorOff; end }} 
+    ).end 
     ] {
     LightController lc
     TempController tc
@@ -95,7 +95,7 @@ class HouseController [
     }
 
     void setTemperature(int x) {
-        tc.set(x)
+        tc.setTemperature(x)
     }
 
     void turnTempOff() {

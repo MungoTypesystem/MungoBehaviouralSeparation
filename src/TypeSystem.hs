@@ -12,8 +12,12 @@ import Control.Arrow (second)
 import Debug.Trace
 debugTrace s = trace s $ return ()
 
-
 type Gamma = [(String, Type)]
+
+(===) :: Gamma -> Gamma -> Bool
+(===) g1 g2 =  
+    let sortFunction = sortBy (\a b -> fst a `compare` fst b) 
+    in (sortFunction g1) == (sortFunction g2)
 
 data Omega  = Omega [(String, Gamma)] 
     deriving (Show)
@@ -34,11 +38,10 @@ type NDTypeSystem a = MState [(MyState, Type)] a
 type DTypeSystem  a = MState (MyState, Type) a
 
 instance Eq MyState where
-    s1 == s2 = 
-        let sortFunction = sortBy (\a b -> fst a `compare` fst b) 
-            g1 = gamma $ environments s1
+    s1 == s2 =  
+        let g1 = gamma $ environments s1
             g2 = gamma $ environments s2
-        in sortFunction g1 == sortFunction g2
+        in g1 === g2
 
 
 forAll :: DTypeSystem [(MyState, Type)] -> NDTypeSystem ()
@@ -64,7 +67,7 @@ isUsageState _               = True
 instance Eq UsageState where
     a == UsageStateAny = True
     UsageStateAny == b = True
-    a == b             = currentGamma a == currentGamma b
+    a == b             = currentGamma a === currentGamma b
 
 type DUsageState a  = MState UsageState a
 type NDUsageState a = MState [UsageState] a
@@ -76,6 +79,7 @@ forAll' f = do
     let states'' = map (runState f) states'
     let states''' = concat $ map fst $ rights $  states''
     when (not (null states')) $ rewriteStates' states'''
+    when (null states''') $ error "forAll'"
     return ()
 
 rewriteStates' :: [UsageState] -> NDUsageState ()
@@ -687,7 +691,7 @@ checkCon lbl = forAll $ do
     (Omega lbls) <- getOmega
     expectedGamma <- lbl `envLookupIn` lbls
     gamma <- getGamma
-    assert' $ expectedGamma == gamma 
+    assert' $ expectedGamma === gamma 
     s <- getMyState
     return [(s, (BaseType VoidType))]
 
@@ -744,8 +748,8 @@ checkTCCh u1 u2 = forAll' $ do
     (_, s2) <- fromEitherM $ runState (checkTUsage u2) [s]
     let result = [s1, s2]
     let resultFirst = usefullUsageStates result
-    let resultFinal = validEnvironments resultFirst result
-    
+    let resultFinal = validEnvironments resultFirst result    
+
     return resultFinal
 
 checkTCBr :: [(String, UsageImpl)] -> NDUsageState ()
@@ -801,7 +805,8 @@ checkTCRec x u = forAll' $ do
     let rec' = (x, currentGamma s) : rec
     let s' = s { currentRecursive = rec'}
     setState s'
-    convertNDToD' $ checkTUsage u
+    result <- convertNDToD' $ checkTUsage u
+    return result
     where setState s = MState $ \m -> Right ((), s)
           convertNDToD' :: NDUsageState () -> DUsageState [UsageState]
           convertNDToD' nd = do 
@@ -811,14 +816,13 @@ checkTCRec x u = forAll' $ do
                           return $ newStates
                   else return [s]
 
-
 checkTCVar :: String -> NDUsageState ()
 checkTCVar x = forAll' $ do
     s <- getState
     let rec = currentRecursive s
-    let gamma = currentGamma s
+    let gamma = currentGamma s 
     oldGamma <- x `envLookupIn` rec
-    assert' $ gamma == oldGamma
+    assert' $ gamma === oldGamma
     return [UsageStateAny]
 
 checkTCPar :: UsageImpl -> UsageImpl -> UsageImpl -> NDUsageState ()
@@ -927,7 +931,7 @@ checkTClass cls c = do
     case res of
         (Right (_, term)) -> if any (\term' -> terminatedEnv (currentGamma term')) $ term
                                     then Right ()
-                                    else Left $ ["did not work", show (length term)] ++ map (show . currentGamma) term
+                                    else Left $ ["could not typecheck: ", name, " " , show (length term)] ++ map (show . currentGamma) term
         (Left err)        -> Left [err]
                 
 terminatedEnv :: Gamma -> Bool

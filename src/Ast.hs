@@ -1,5 +1,7 @@
 module Ast where
 
+import Data.List (sortBy)
+
 type ClassName     = String
 type FieldName     = String
 type MethodName    = String
@@ -112,7 +114,17 @@ data UsageImpl = UsageChoice UsageImpl UsageImpl
                | UsageParallel UsageImpl UsageImpl UsageImpl
                | UsageEnd
                | UsagePlaceholder
-                 deriving (Eq)
+
+instance Eq UsageImpl where
+    (UsageChoice u1 u2)      == (UsageChoice u1' u2')       = u1 == u1' && u2 == u2'
+    (UsageBranch lst)        == (UsageBranch lst')          = lst == lst'
+    (UsageRecursive l u)     == (UsageRecursive l' u')      = l == l' && u == u'
+    (UsageRecursive l u)     == (UsageVariable l')          = l == l' 
+    (UsageVariable l)        == (UsageRecursive l' u')      = l == l' 
+    (UsageParallel u1 u2 u3) == (UsageParallel u1' u2' u3') = u1 == u1' && u2 == u2' && u3 == u3'
+    (UsageEnd)               == (UsageEnd)                  = True
+    (UsagePlaceholder)       == (UsagePlaceholder)          = True
+    _                        == _                           = False
 
 instance Show Usage where
     show (Usage u s) = show u ++ "^(" ++ show s ++ ")"
@@ -124,7 +136,7 @@ instance Show SplitUsage where
 
 instance Show UsageImpl where
     show (UsageChoice u1 u2) = concat ["< ", show u1, ", ", show u2, " >"]
-    show (UsageBranch lst)   = "{ " ++ concat [ (f ++ "; " ++ show u) 
+    show (UsageBranch lst)   = "{ " ++ concat [ (f ++ "; " ++ show u ++ " ") 
                                               | (f, u) <- lst  ] ++ " }"
     show (UsageRecursive s u)= "rec " ++ s ++ ". " ++ show u
     show (UsageVariable s)   = s

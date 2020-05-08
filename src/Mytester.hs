@@ -10,9 +10,11 @@ import Control.Monad (mapM_, guard, when)
 import Data.List (permutations, nub)
 import Interpreter 
 
-run :: IO () 
-run = do
-    f <- readFile "testfile.mg"
+houseF = "../ExamplePrograms/house.mg"
+
+run :: String -> IO () 
+run name = do
+    f <- readFile name
     --putStrLn f
     putStrLn "------------------------------"
     let parsed = parseProgram f
