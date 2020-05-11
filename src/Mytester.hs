@@ -55,7 +55,15 @@ runMain program = do
         
         when (length mthd == 1) $ do
             let mthd' = head mthd
-            runProgram program cls' mthd'
+            let tp1  = parameterFrom $ parameter1 $ mthd'
+            let tp2  = parameterFrom $ parameter2 $ mthd'
+            let tret = returnType mthd' 
+            let void = BaseType VoidType
+            let allVoid = (tp1 == void && tp2 == void && tret == void)
+            when allVoid $ do
+                runProgram program cls' mthd'
+            when (not allVoid) $ do
+                putStrLn $ "parameters and return type must be of type void for main.main()"
     
 
 (Right u1) = testParseUsage "rec X. {m; <end, X>}"
