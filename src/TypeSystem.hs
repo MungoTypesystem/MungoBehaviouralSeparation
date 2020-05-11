@@ -32,12 +32,16 @@ data ClassData = ClassData { allClasses   :: [Class]
 
 data MyState = MyState { environments :: Environments
                        , classData    :: ClassData 
-                       } deriving (Show)
+                       }
+             | MyStateAny
+                deriving (Show)
 
 type NDTypeSystem a = MState [(MyState, Type)] a
 type DTypeSystem  a = MState (MyState, Type) a
 
 instance Eq MyState where
+    MyStateAny == _          = True
+    _          == MyStateAny = True
     s1 == s2 =  
         let g1 = gamma $ environments s1
             g2 = gamma $ environments s2
@@ -103,7 +107,14 @@ usefullUsageStates states =
 -- monad looking into functions
 
 rewriteStates :: [(MyState, Type)] -> NDTypeSystem ()
-rewriteStates ls = MState $ \_ -> Right ((), ls)
+rewriteStates ls = MState $ \_ -> Right ((), usefulStates ls)
+
+usefulStates :: [(MyState, Type)] -> [(MyState, Type)]
+usefulStates s = 
+    let s' = filter (not . isAnyState . fst) s
+    in if null s' then s else s'
+    where isAnyState MyStateAny = True
+          isAnyState _          = False
 
 getMyState ::  DTypeSystem MyState
 getMyState = MState $ \m -> Right (fst m, m)
@@ -245,6 +256,13 @@ getMethod' name = do
     let method = filter ((name == ) . methodName) methods
     headM method
 
+assertNotAnyState :: DTypeSystem ()
+assertNotAnyState = do
+    state' <- getMyState
+    case state' of
+        MyStateAny -> fail ""
+        _          -> return ()
+
 ---
 
 term :: Type -> Bool
@@ -310,6 +328,7 @@ checkSeq :: Expression -> Expression -> NDTypeSystem ()
 checkSeq e1 e2 = do
     checkExpression e1
     forAll $ do 
+        assertNotAnyState
         s <- getState
         t <- getReturnType
         assert' $ term t
@@ -320,6 +339,7 @@ checkFld :: FieldName -> Expression -> NDTypeSystem ()
 checkFld fieldname expression = do
     checkExpression expression
     forAll $ do
+        assertNotAnyState
         t <- getReturnType
         f <- getField fieldname
         assert' $ agree f t
@@ -340,6 +360,7 @@ checkCall r m v1 v2 = do
     -- unsplit gamma
     splitGamma names
     forAll $ do
+        assertNotAnyState
         -- getGamma >>= \g -> debugTrace ("starting gamma " ++ show g)
         -- find the method definition
         (Method retType _ p1 p2 _) <- getMethod r m 
@@ -410,12 +431,14 @@ checkCall r m v1 v2 = do
         gamma <- getGamma
 
         s <- getMyState
-        return $ do
+        let res =  do
             -- save the reference new type
             u' <- resultingUsages
             let gamma' = ((getReferenceName r), (ClassType cn u')) : gamma
             let s' = updateGammaInState s gamma'
             return (s', retType)
+        assert' $ not (null res)
+        return res
         
     unsplitGamma names
 
@@ -611,12 +634,14 @@ checkVal (ValueReference r) = checkRef r
 
 checkBaseVal :: BaseValue -> NDTypeSystem ()
 checkBaseVal bv = forAll $ do
+    assertNotAnyState
     s <- getMyState
     let t = baseValueToType bv
     return [(s, t)]
 
 checkRef :: Reference -> NDTypeSystem ()
 checkRef r = forAll $ do
+    assertNotAnyState
     let name = case r of
                     (RefParameter name) -> name
                     (RefField name)     -> name
@@ -632,6 +657,7 @@ checkRef r = forAll $ do
 
 checkNew :: ClassName -> NDTypeSystem ()
 checkNew name = forAll $ do
+    assertNotAnyState
     currentState <- getMyState
     cls <- findClass name
     let u = classUsage cls
@@ -645,6 +671,7 @@ checkIf e1 e2 e3 = do
     let name = getReferenceName r
     splitGamma [name]
     forAll $ do
+        assertNotAnyState
         retType <- getReturnType
         assert' $ isBoolType retType 
         t <- extractTypeFromGamma name
@@ -653,20 +680,26 @@ checkIf e1 e2 e3 = do
         myState <- getMyState
         gamma' <- getGamma
         let gammaTrue    = (name, (ClassType cn usageT)) : gamma'
-        let gammaFalse   = (name, (ClassType cn usageT)) : gamma'
+        let gammaFalse   = (name, (ClassType cn usageF)) : gamma'
         let myStateTrue  = updateGammaInState myState gammaTrue
         let myStateFalse = updateGammaInState myState gammaFalse
-        (_,  trueStates)  <- fromEitherM $ runState (checkExpression e2) [(myStateTrue, (BaseType VoidType))]
-        (_, falseStates) <- fromEitherM $ runState (checkExpression e2) [(myStateFalse, (BaseType VoidType))]
-        return $ do
+        (_,  trueStates) <- fromEitherM $ runState (checkExpression e2) [(myStateTrue, (BaseType VoidType))]
+        (_, falseStates) <- fromEitherM $ runState (checkExpression e3) [(myStateFalse, (BaseType VoidType))]
+        let res = do
             (trueEnvs,  trueType)  <- trueStates  
             (falseEnvs, falseType) <- falseStates 
             assert' $ trueType == falseType
             assert' $ trueEnvs == falseEnvs
+            assert' $ (MyStateAny == trueEnvs && MyStateAny == falseEnvs) 
+            let envs = if MyStateAny == trueEnvs
+                            then falseEnvs
+                            else trueEnvs
             -- we only want to save gamma
-            let newGamma = gamma $ environments trueEnvs
+            let newGamma = gamma $ environments envs
             let myState' = updateGammaInState myState newGamma
             return (myState', trueType)
+        assert' $ not (null res)
+        return res
 
     unsplitGamma [name]
     where toCallExpression e@(ExpressionCall _ _ _ _) = return e
@@ -676,6 +709,7 @@ checkIf e1 e2 e3 = do
 checkLab :: LabelName -> Expression -> NDTypeSystem ()
 checkLab lbl e = do 
     forAll $ do
+        assertNotAnyState
         (Omega lbls) <- getOmega
         let found = lbl `envLookupIn` lbls
         assert' (isNothing found)
@@ -688,12 +722,12 @@ checkLab lbl e = do
 
 checkCon :: LabelName -> NDTypeSystem ()
 checkCon lbl = forAll $ do
+    assertNotAnyState
     (Omega lbls) <- getOmega
     expectedGamma <- lbl `envLookupIn` lbls
     gamma <- getGamma
     assert' $ expectedGamma === gamma 
-    s <- getMyState
-    return [(s, (BaseType VoidType))]
+    return [(MyStateAny, (BaseType VoidType))]
 
 convertNDToD :: NDTypeSystem () -> DTypeSystem [(MyState, Type)]
 convertNDToD nd = do 
@@ -749,7 +783,7 @@ checkTCCh u1 u2 = forAll' $ do
     let result = [s1, s2]
     let resultFirst = usefullUsageStates result
     let resultFinal = validEnvironments resultFirst result    
-
+    assert' $ not (null resultFinal)
     return resultFinal
 
 checkTCBr :: [(String, UsageImpl)] -> NDUsageState ()
@@ -763,6 +797,7 @@ checkTCBr lst = forAll' $ do
     let resFirst = usefullUsageStates res''
     let resTail = res''
     let result = validEnvironments resFirst resTail
+    assert' $ not (null result)
     return result
 
 checkTCBr' :: String -> UsageImpl -> NDUsageState ()
@@ -779,7 +814,7 @@ checkTCBr' lbl uimpl = forAll' $ do
     let myState = MyState env classData
     let res = runState (checkExpression e) [(myState, BotType)]
     res' <- snd <$> fromEitherM res
-    return $ do
+    let res'' = do
         (myState', ti) <- res'
         let (Environments gamma' omega') = environments myState'
         -- pull the parameter type out
@@ -796,6 +831,8 @@ checkTCBr' lbl uimpl = forAll' $ do
         -- run the rest of checkTUSage
         finalRes <- fromEitherM $ runState (checkTUsage uimpl) [s']
         snd finalRes
+    assert' $ not (null res'')
+    return res''
         
 checkTCRec :: String -> UsageImpl -> NDUsageState ()
 checkTCRec x u = forAll' $ do
@@ -928,6 +965,8 @@ checkTClass cls c = do
     let classdata = ClassData cls name
     let state     = UsageState (initFields (classFields c)) [] classdata
     let res       = runState (checkTUsage usage) [state]
+    debugTrace $ "checking class " ++ name
+    debugTrace $ "result of checking class " ++ show res
     case res of
         (Right (_, term)) -> if any (\term' -> terminatedEnv (currentGamma term')) $ term
                                     then Right ()
