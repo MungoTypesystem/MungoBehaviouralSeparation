@@ -2,7 +2,7 @@ module TypeSystem where
 
 import Ast
 import StateErrorMonad
-import Data.Either (rights, isRight, fromRight)
+import Data.Either (rights, isRight, fromRight, partitionEithers)
 import Data.Maybe (isNothing, catMaybes, isJust, fromJust)
 import Data.List (permutations, sortBy, nub, intersect)
 import Control.Monad (forM, when, unless)
@@ -51,7 +51,8 @@ instance Eq MyState where
 forAll :: DTypeSystem [(MyState, Type)] -> NDTypeSystem ()
 forAll f = do
     states <- getState
-    let states' = nub $ concat $ map fst $ rights $ map (runState f) states 
+    let states' = nub $ concat $ map fst $ rights $ map (runState f) states
+    when (null states') $ fail "" 
     rewriteStates states' 
     return ()
 
@@ -83,7 +84,7 @@ forAll' f = do
     let states'' = map (runState f) states'
     let states''' = concat $ map fst $ rights $  states''
     when (not (null states')) $ rewriteStates' states'''
-    when (null states''') $ error "forAll'"
+    when (null states''') $ fail ""
     return ()
 
 rewriteStates' :: [UsageState] -> NDUsageState ()
@@ -743,13 +744,15 @@ checkBinaryExpression op e1 e2 = do
     let findType t t' = 
             map thd $ filter (\(t1, t1', t1'') -> t == t1 && t' == t1') types
     checkExpression e1
-    forAll $ do
+    forAll  $ do
         t <- getReturnType
         ss <- convertNDToD $ checkExpression e2
-        return $ [ (s, t'') 
-                 | (s, t') <- ss, 
-                   t'' <- findType t t'
-                 ]
+        let res = [ (s, t'') 
+                  | (s, t') <- ss, 
+                    t'' <- findType t t'
+                  ]
+        assert' $ not (null res)
+        return res
 
 
 operatorType :: BinaryOperator -> [(Type, Type, Type)]
@@ -802,6 +805,7 @@ checkTCBr lst = forAll' $ do
 
 checkTCBr' :: String -> UsageImpl -> NDUsageState ()
 checkTCBr' lbl uimpl = forAll' $ do
+
     (Method rettype _ p1 p2 e) <- getMethod' lbl
     let (Parameter p1FromType p1ToType x1) = p1 
     let (Parameter p2FromType p2ToType x2) = p2
@@ -854,7 +858,7 @@ checkTCRec x u = forAll' $ do
                   else return [s]
 
 checkTCVar :: String -> NDUsageState ()
-checkTCVar x = forAll' $ do
+checkTCVar x = forAll'  $ do
     s <- getState
     let rec = currentRecursive s
     let gamma = currentGamma s 
@@ -965,8 +969,6 @@ checkTClass cls c = do
     let classdata = ClassData cls name
     let state     = UsageState (initFields (classFields c)) [] classdata
     let res       = runState (checkTUsage usage) [state]
-    debugTrace $ "checking class " ++ name
-    debugTrace $ "result of checking class " ++ show res
     case res of
         (Right (_, term)) -> if any (\term' -> terminatedEnv (currentGamma term')) $ term
                                     then Right ()

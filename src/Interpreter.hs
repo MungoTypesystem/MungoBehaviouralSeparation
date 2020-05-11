@@ -201,9 +201,10 @@ runExpressionIf e1 e2 e3 =
             else runExpression e3
 
 initVal :: FieldType -> Values
-initVal (ClassFieldType cn) = BValue BaseNull
-initVal (BaseFieldType BoolType) = BValue $ BaseBool False
-initVal (BaseFieldType StringType) = BValue $ BaseString ""
+initVal (ClassFieldType cn)         = BValue BaseNull
+initVal (BaseFieldType BoolType)    = BValue $ BaseBool False
+initVal (BaseFieldType StringType)  = BValue $ BaseString ""
+initVal (BaseFieldType IntegerType) = BValue $ BaseInteger 0
 
 initField :: Field -> (String, Values)
 initField field = 

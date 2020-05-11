@@ -11,11 +11,20 @@ class main [{main; end}] {
         i = new Inifinite;
         loop: 
             if (i.shouldContinue()) {
-                c = c + 1;
+                c = (c + 1);
                 print(c);
                 continue loop
             } else {
                 unit
             }
     }
-}
+} 
+
+/*
+class main [{main; end}] {
+    int c
+    void main() {
+        c = (c + 1);
+        unit
+    }
+} */ 
