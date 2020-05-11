@@ -1,30 +1,21 @@
-class Inifinite [ rec X. {shouldContinue; <X, end> }] {
+class Infinite [ rec X. {shouldContinue; <X, end> }] {
     bool shouldContinue() {
         true
     }
 }
 
 class main [{main; end}] {
-    Inifinite i
+    Infinite i
     int c
     void main() {
-        i = new Inifinite;
-        loop: 
+        i = new Infinite;
+        (loop: 
             if (i.shouldContinue()) {
                 c = (c + 1);
                 print(c);
                 continue loop
             } else {
                 unit
-            }
+            })
     }
-} 
-
-/*
-class main [{main; end}] {
-    int c
-    void main() {
-        c = (c + 1);
-        unit
-    }
-} */ 
+}
