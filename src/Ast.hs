@@ -86,7 +86,6 @@ data Expression = ExpressionSeq Expression Expression
                 | ExpressionBinaryOperation BinaryOperator Expression Expression
                 | ExpressionPrint Value -- does not read value only prints it
                 | ExpressionInput 
-                  deriving (Show)
 
 data BinaryOperator = OpEQ
                     | OpAnd
@@ -146,5 +145,20 @@ instance Show UsageImpl where
 
 instance Eq Usage where
     u1 == u2 = currentUsage u1 == currentUsage u2
+
+instance Show Expression where
+    show (ExpressionSeq e1 e2)      = show e1 ++ "; " ++ show e2
+    show (ExpressionAssign f e)     = f ++ " = " ++ show e
+    show (ExpressionCall r m v1 v2) = concat [show r, ".", m, "(", show v1, ", ", show v2, ")"]
+    show (ExpressionValue v)        = show v
+    show (ExpressionNew cn)         = "new " ++ cn
+    show (ExpressionIf e1 e2 e3)    = concat ["if (", show e1, ") { ", show e2, " } else { " , show e3, " } "]
+    show (ExpressionLabel lbl e)    = lbl ++ ": " ++ show e
+    show (ExpressionContinue lbl)   = "continue " ++ lbl
+    show (ExpressionBinaryOperation b e e') =
+        concat ["((", show e, ") ", show b, " (", show e', "))"]
+    show (ExpressionPrint v)        = "print(" ++ show v ++ ")"
+    show (ExpressionInput)          = "input()"
+
 
 
