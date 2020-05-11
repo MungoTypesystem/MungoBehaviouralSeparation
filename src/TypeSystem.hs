@@ -96,8 +96,8 @@ validEnvironments (x:xs) ls = if all (x `elem`) ls
                                     else validEnvironments xs ls
 validEnvironments []     ls = []
 
-usefullUsageStates :: [[UsageState]] -> [UsageState]
-usefullUsageStates states =  
+usefulUsageStates :: [[UsageState]] -> [UsageState]
+usefulUsageStates states =  
     let states'  = concat states
         states'' = filter isUsageState states' 
     in if null states'' && length states' > length states''
@@ -354,15 +354,20 @@ checkFld fieldname expression = do
 
 checkCall :: Reference -> MethodName -> Value -> Value -> NDTypeSystem ()
 checkCall r m v1 v2 = do
+    debugTrace $ "call " ++ m
     -- find the names of r v1 v2
     let names = getReferenceName r : catMaybes [ getValueName v1, getValueName v2]
     -- split gamma
     -- check call
     -- unsplit gamma
     splitGamma names
+
+    debugTrace $ "call split " ++ m
+
     forAll $ do
         assertNotAnyState
-        -- getGamma >>= \g -> debugTrace ("starting gamma " ++ show g)
+        getGamma >>= \g -> debugTrace ("starting gamma " ++ show g)
+        getOmega >>= \g -> debugTrace ("starting omega " ++ show g)
         -- find the method definition
         (Method retType _ p1 p2 _) <- getMethod r m 
         t <- extractTypeFromGamma $ getReferenceName r 
@@ -382,9 +387,6 @@ checkCall r m v1 v2 = do
 
         -- check that parameters match
         -- TODO we should only check usageimpl
-
-
-
         when (isClassType v1Type && isClassType  fromTypeP1) $ do
             (cnV1, uV1) <- typeExtractClassInfo v1Type
             (cnFrom1, uFrom1) <- typeExtractClassInfo fromTypeP1
@@ -439,8 +441,10 @@ checkCall r m v1 v2 = do
         assert' $ not (null res)
         return res
         
+    debugTrace $ "call' " ++ m
     unsplitGamma names
 
+    debugTrace $ "call'' " ++ m
     where getValueName :: Value -> Maybe String
           getValueName (ValueReference r) = Just $ getReferenceName r
           getValueName _                  = Nothing
@@ -781,7 +785,7 @@ checkTCCh u1 u2 = forAll' $ do
     (_, s1) <- fromEitherM $ runState (checkTUsage u1) [s]
     (_, s2) <- fromEitherM $ runState (checkTUsage u2) [s]
     let result = [s1, s2]
-    let resultFirst = usefullUsageStates result
+    let resultFirst = usefulUsageStates result
     let resultFinal = validEnvironments resultFirst result    
     assert' $ not (null resultFinal)
     return resultFinal
@@ -794,7 +798,7 @@ checkTCBr lst = forAll' $ do
     let res' = map (\ndstate -> runState ndstate [s]) res
     assert' $ all isRight res'
     let res'' = map snd $ rights res'
-    let resFirst = usefullUsageStates res''
+    let resFirst = usefulUsageStates res''
     let resTail = res''
     let result = validEnvironments resFirst resTail
     assert' $ not (null result)

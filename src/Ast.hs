@@ -120,6 +120,7 @@ instance Eq UsageImpl where
     (UsageRecursive l u)     == (UsageRecursive l' u')      = l == l' && u == u'
     (UsageRecursive l u)     == (UsageVariable l')          = l == l' 
     (UsageVariable l)        == (UsageRecursive l' u')      = l == l' 
+    (UsageVariable l)        == (UsageVariable l')          = l == l' 
     (UsageParallel u1 u2 u3) == (UsageParallel u1' u2' u3') = u1 == u1' && u2 == u2' && u3 == u3'
     (UsageEnd)               == (UsageEnd)                  = True
     (UsagePlaceholder)       == (UsagePlaceholder)          = True
