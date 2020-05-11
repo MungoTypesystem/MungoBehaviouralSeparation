@@ -432,12 +432,10 @@ checkCall r m v1 v2 = do
         gamma <- getGamma
 
         s <- getMyState
-        let res =  do
-            -- save the reference new type
-            u' <- resultingUsages
-            let gamma' = ((getReferenceName r), (ClassType cn u')) : gamma
-            let s' = updateGammaInState s gamma'
-            return (s', retType)
+        let res = do u' <- resultingUsages
+                     let gamma' = ((getReferenceName r), (ClassType cn u')) : gamma
+                     let s' = updateGammaInState s gamma'
+                     return (s', retType)
         assert' $ not (null res)
         return res
         
@@ -686,19 +684,18 @@ checkIf e1 e2 e3 = do
         let myStateFalse = updateGammaInState myState gammaFalse
         (_,  trueStates) <- fromEitherM $ runState (checkExpression e2) [(myStateTrue, (BaseType VoidType))]
         (_, falseStates) <- fromEitherM $ runState (checkExpression e3) [(myStateFalse, (BaseType VoidType))]
-        let res = do
-            (trueEnvs,  trueType)  <- trueStates  
-            (falseEnvs, falseType) <- falseStates 
-            assert' $ trueType == falseType
-            assert' $ trueEnvs == falseEnvs
-            assert' $ (MyStateAny == trueEnvs && MyStateAny == falseEnvs) 
-            let envs = if MyStateAny == trueEnvs
-                            then falseEnvs
-                            else trueEnvs
-            -- we only want to save gamma
-            let newGamma = gamma $ environments envs
-            let myState' = updateGammaInState myState newGamma
-            return (myState', trueType)
+        let res = do (trueEnvs,  trueType)  <- trueStates  
+                     (falseEnvs, falseType) <- falseStates 
+                     assert' $ trueType == falseType
+                     assert' $ trueEnvs == falseEnvs
+                     assert' $ (MyStateAny == trueEnvs && MyStateAny == falseEnvs) 
+                     let envs = if MyStateAny == trueEnvs
+                                     then falseEnvs
+                                     else trueEnvs
+                     -- we only want to save gamma
+                     let newGamma = gamma $ environments envs
+                     let myState' = updateGammaInState myState newGamma
+                     return (myState', trueType)
         assert' $ not (null res)
         return res
 
@@ -818,23 +815,23 @@ checkTCBr' lbl uimpl = forAll' $ do
     let myState = MyState env classData
     let res = runState (checkExpression e) [(myState, BotType)]
     res' <- snd <$> fromEitherM res
-    let res'' = do
-        (myState', ti) <- res'
-        let (Environments gamma' omega') = environments myState'
-        -- pull the parameter type out
-        p1Type <- x1 `envLookupIn` gamma'
-        p2Type <- x2 `envLookupIn` gamma'
-        -- check they match expected type
-        assert' $ p1Type == p1ToType
-        assert' $ p2Type == p2ToType
-        -- remove them
-        let gamma'' = filter (\(r, _) -> r /= x1 && r /= x2) gamma'
-        -- check return type match
-        assert' $ ti == rettype
-        let s' = s { currentGamma = gamma'' }
-        -- run the rest of checkTUSage
-        finalRes <- fromEitherM $ runState (checkTUsage uimpl) [s']
-        snd finalRes
+    let res'' = do (myState', ti) <- res'
+                   let (Environments gamma' omega') = environments myState'
+                   -- pull the parameter type out
+                   p1Type <- x1 `envLookupIn` gamma'
+                   p2Type <- x2 `envLookupIn` gamma'
+                   -- check they match expected type
+                   assert' $ p1Type == p1ToType
+                   assert' $ p2Type == p2ToType
+
+                   -- remove them
+                   let gamma'' = filter (\(r, _) -> r /= x1 && r /= x2) gamma'
+                   -- check return type match
+                   assert' $ ti == rettype
+                   let s' = s { currentGamma = gamma'' }
+                   -- run the rest of checkTUSage
+                   finalRes <- fromEitherM $ runState (checkTUsage uimpl) [s']
+                   snd finalRes
     assert' $ not (null res'')
     return res''
         
