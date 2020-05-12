@@ -19,7 +19,7 @@ runFile s = do
     --putStrLn f
     putStrLn "------------------------------"
     let parsed = parseProgram f
-    either putStrLn convertToAst parsed
+    either putStrLn (convertToAst True) parsed
 
 main :: IO ()
 main = do
