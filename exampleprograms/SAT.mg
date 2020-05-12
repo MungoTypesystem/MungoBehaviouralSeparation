@@ -27,20 +27,12 @@ class Boolean[
 
 class main[{main; end}] {
     Boolean x1
-    /*Boolean x2
-    Boolean x3
-    Boolean x4
-    Boolean x5
-    Boolean x6
-    Boolean x7
-    Boolean x8
-    Boolean x9 */
     bool b 
     void main() {
         x1 = new Boolean;
         x1.setup();
         x1.T();
-        x1.val();
-        unit
+        b = x1.val();
+        print(b)
     }
-}
+} 

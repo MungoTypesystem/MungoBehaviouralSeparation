@@ -36,6 +36,10 @@ data MyState = MyState { environments :: Environments
              | MyStateAny
                 deriving (Show)
 
+isAnyState :: MyState -> Bool
+isAnyState MyStateAny = True
+isAnyState _          = False
+
 type NDTypeSystem a = MState [(MyState, Type)] a
 type DTypeSystem  a = MState (MyState, Type) a
 
@@ -114,8 +118,6 @@ usefulStates :: [(MyState, Type)] -> [(MyState, Type)]
 usefulStates s = 
     let s' = filter (not . isAnyState . fst) s
     in if null s' then s else s'
-    where isAnyState MyStateAny = True
-          isAnyState _          = False
 
 getMyState ::  DTypeSystem MyState
 getMyState = MState $ \m -> Right (fst m, m)
@@ -260,10 +262,8 @@ getMethod' name = do
 assertNotAnyState :: DTypeSystem ()
 assertNotAnyState = do
     state' <- getMyState
-    case state' of
-        MyStateAny -> fail ""
-        _          -> return ()
-
+    when (isAnyState state') $ fail ""
+    return ()
 ---
 
 term :: Type -> Bool
@@ -288,7 +288,7 @@ methodTransitions u = methodTransitions' [] u
         methodTransitions' recU (Usage (UsageBranch lst) s)    = map (\(mname, uimpl) -> (mname, Usage uimpl s)) lst
         methodTransitions' recU (Usage (UsageRecursive x u) s) = 
             if x `notElem` recU 
-                then methodTransitions' (x:recU) (Usage u s)
+                then methodTransitions' (x:recU) (Usage (substituteUsage (UsageRecursive x u) x u) s)
                 else []
         methodTransitions' recU (Usage (UsageVariable x) s)    = [] -- should never be reached
         methodTransitions' recU (Usage (UsageParallel _ _ _) s)= [] -- we cannot do transitions directly on parallel usages
@@ -298,8 +298,8 @@ methodTransitions u = methodTransitions' [] u
 choiceTransitions :: MonadFail m => Usage -> m (Usage, Usage)
 choiceTransitions u = 
     case currentUsage u of
-        (UsageChoice u1 u2) -> return (u {currentUsage = u1} , u{currentUsage = u2})
-        _                   -> fail "not a choiceUsage"
+        (UsageChoice u1 u2)  -> return (u {currentUsage = u1} , u{currentUsage = u2})
+        _                    -> fail "not a choiceUsage"
 
 
 checkExpression :: Expression -> NDTypeSystem ()
@@ -354,7 +354,6 @@ checkFld fieldname expression = do
 
 checkCall :: Reference -> MethodName -> Value -> Value -> NDTypeSystem ()
 checkCall r m v1 v2 = do
-    debugTrace $ "call " ++ m
     -- find the names of r v1 v2
     let names = getReferenceName r : catMaybes [ getValueName v1, getValueName v2]
     -- split gamma
@@ -362,12 +361,8 @@ checkCall r m v1 v2 = do
     -- unsplit gamma
     splitGamma names
 
-    debugTrace $ "call split " ++ m
-
     forAll $ do
         assertNotAnyState
-        getGamma >>= \g -> debugTrace ("starting gamma " ++ show g)
-        getOmega >>= \g -> debugTrace ("starting omega " ++ show g)
         -- find the method definition
         (Method retType _ p1 p2 _) <- getMethod r m 
         t <- extractTypeFromGamma $ getReferenceName r 
@@ -441,10 +436,8 @@ checkCall r m v1 v2 = do
         assert' $ not (null res)
         return res
         
-    debugTrace $ "call' " ++ m
     unsplitGamma names
 
-    debugTrace $ "call'' " ++ m
     where getValueName :: Value -> Maybe String
           getValueName (ValueReference r) = Just $ getReferenceName r
           getValueName _                  = Nothing
@@ -687,19 +680,22 @@ checkIf e1 e2 e3 = do
         let myStateTrue  = updateGammaInState myState gammaTrue
         let myStateFalse = updateGammaInState myState gammaFalse
         (_,  trueStates) <- fromEitherM $ runState (checkExpression e2) [(myStateTrue, (BaseType VoidType))]
+        let r = runState (checkExpression e3) [(myStateFalse, (BaseType VoidType))]
         (_, falseStates) <- fromEitherM $ runState (checkExpression e3) [(myStateFalse, (BaseType VoidType))]
         let res = do (trueEnvs,  trueType)  <- trueStates  
                      (falseEnvs, falseType) <- falseStates 
                      assert' $ trueType == falseType
                      assert' $ trueEnvs == falseEnvs
-                     assert' $ (MyStateAny == trueEnvs && MyStateAny == falseEnvs) 
-                     let envs = if MyStateAny == trueEnvs
+                     let anyState = (isAnyState trueEnvs && isAnyState falseEnvs) 
+                     let envs = if isAnyState trueEnvs
                                      then falseEnvs
                                      else trueEnvs
                      -- we only want to save gamma
                      let newGamma = gamma $ environments envs
                      let myState' = updateGammaInState myState newGamma
-                     return (myState', trueType)
+                     if anyState 
+                            then return (MyStateAny, trueType)
+                            else return (myState', trueType)
         assert' $ not (null res)
         return res
 

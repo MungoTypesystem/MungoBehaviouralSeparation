@@ -1,6 +1,7 @@
 module Ast where
 
 import Data.List (sortBy)
+import Control.Arrow (second)
 
 type ClassName     = String
 type FieldName     = String
@@ -114,6 +115,15 @@ data UsageImpl = UsageChoice UsageImpl UsageImpl
                | UsageEnd
                | UsagePlaceholder
 
+substituteUsage :: UsageImpl -> String -> UsageImpl -> UsageImpl
+substituteUsage v k (UsageChoice u1 u2)      = UsageChoice (substituteUsage v k u1) (substituteUsage v k u2)
+substituteUsage v k (UsageBranch lst)        = UsageBranch (map (second (substituteUsage v k)) lst)
+substituteUsage v k (UsageRecursive x u)     = UsageRecursive x (substituteUsage v k u)
+substituteUsage v k (UsageVariable x)        = if x == k then v else UsageVariable x
+substituteUsage v k (UsageParallel u1 u2 u3) = UsageParallel u1 u2 (substituteUsage v k u3)
+substituteUsage v k UsageEnd                 = UsageEnd
+substituteUsage v k UsagePlaceholder         = UsagePlaceholder 
+
 instance Eq UsageImpl where
     (UsageChoice u1 u2)      == (UsageChoice u1' u2')       = u1 == u1' && u2 == u2'
     (UsageBranch lst)        == (UsageBranch lst')          = lst == lst'
@@ -121,6 +131,8 @@ instance Eq UsageImpl where
     (UsageRecursive l u)     == (UsageVariable l')          = l == l' 
     (UsageVariable l)        == (UsageRecursive l' u')      = l == l' 
     (UsageVariable l)        == (UsageVariable l')          = l == l' 
+    (UsageRecursive l u)     == u'                          = substituteUsage (UsageRecursive l u) l u == u'
+    u                        == (UsageRecursive l u')       = u == substituteUsage u' l u'
     (UsageParallel u1 u2 u3) == (UsageParallel u1' u2' u3') = u1 == u1' && u2 == u2' && u3 == u3'
     (UsageEnd)               == (UsageEnd)                  = True
     (UsagePlaceholder)       == (UsagePlaceholder)          = True

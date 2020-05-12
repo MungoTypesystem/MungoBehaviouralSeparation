@@ -12,32 +12,32 @@ import Interpreter
 
 houseF = "../ExamplePrograms/house.mg"
 
-run :: String -> IO () 
-run name = do
+run :: String -> Bool -> IO () 
+run name toRun = do
     f <- readFile name
     --putStrLn f
     putStrLn "------------------------------"
     let parsed = parseProgram f
-    either putStrLn convertToAst parsed
+    either putStrLn (convertToAst toRun) parsed
     
-convertToAst :: [CstClass] -> IO ()
-convertToAst program = do
+convertToAst :: Bool -> [CstClass] -> IO ()
+convertToAst toRun program = do
     --mapM_ (putStrLn . show) program
     putStrLn "------------------------------"
     let converted = convert program
-    either printErrors printAst converted
+    either printErrors (printAst toRun) converted
 
 printErrors errors = do 
     mapM_ putStrLn errors
 
-printAst program = do
+printAst toRun program = do
     --mapM_ (putStrLn . show) program
     putStrLn "------------------------------"
     let typeChecked = checkTProg program
     case typeChecked of
             Left err -> putStrLn $ show err
             Right _  -> do putStrLn "program checked successfully" 
-                           runMain program
+                           when (toRun) $ runMain program
 
 runMain program = do
     putStrLn "------------------------------"
