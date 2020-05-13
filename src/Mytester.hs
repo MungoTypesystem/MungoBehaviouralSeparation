@@ -30,14 +30,26 @@ convertToAst toRun program = do
 printErrors errors = do 
     mapM_ putStrLn errors
 
+typecheckClass :: [Class] -> [Class] -> IO Bool
+typecheckClass []            program = do
+    return True
+typecheckClass (cls:classes) program = do 
+    case checkTClass program cls of
+        Left err -> do putStrLn $ "class " ++ className cls ++ " failed to typecheck"
+                       putStrLn $ show err
+                       typecheckClass classes program
+                       return False
+        Right _  -> do putStrLn $ "class " ++ className cls ++ " typechecked succesfully" 
+                       typecheckClass classes program
+       
+
 printAst toRun program = do
     --mapM_ (putStrLn . show) program
     putStrLn "------------------------------"
-    let typeChecked = checkTProg program
-    case typeChecked of
-            Left err -> putStrLn $ show err
-            Right _  -> do putStrLn "program checked successfully" 
-                           when (toRun) $ runMain program
+    success <- typecheckClass program program
+    when (success && toRun) $ do
+        putStrLn "program checked successfully" 
+        runMain program
 
 runMain program = do
     putStrLn "------------------------------"

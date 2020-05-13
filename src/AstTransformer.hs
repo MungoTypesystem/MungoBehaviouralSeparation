@@ -129,6 +129,7 @@ convertFieldType g str    =
 convertType :: Definitions -> CstType -> Error Type
 convertType g (CstSimpleType s)  =
     case s of 
+        "none"   -> Right $ BotType
         "bool"   -> Right $ (BaseType BoolType)
         "void"   -> Right $ (BaseType VoidType)
         "string" -> Right $ (BaseType StringType)

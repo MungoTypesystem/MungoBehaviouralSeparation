@@ -31,10 +31,10 @@ data FieldType = ClassFieldType ClassName
                  deriving (Show)
 
 data SimpleType = BoolType 
-              | StringType
-              | IntegerType
-              | VoidType
-              deriving (Show, Eq)
+                | StringType
+                | IntegerType
+                | VoidType
+                  deriving (Show, Eq)
 
 -- M (methods) 
 data Method = Method { returnType :: Type

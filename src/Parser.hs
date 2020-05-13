@@ -13,7 +13,7 @@ import Data.Maybe
 import Text.ParserCombinators.Parsec.Number
 
 parseProgram :: String -> Either String [CstClass]
-parseProgram = left show . parse parseClasses "" 
+parseProgram = left show . parse (parseClasses <* eof) "" 
 
 -- test parser
 testParseUsage = parse parseUsage ""
@@ -118,7 +118,7 @@ parseParameter =   try parseFullParameter
                <|> try parseHalfParameter
     where parseFullParameter = do startingType  <- parseType
                                   reservedOp "->"
-                                  endingType    <- parseType
+                                  endingType    <- try parseType
                                   parameterName <- identifier
                                   return $ CstParameter startingType endingType parameterName
           parseHalfParameter = do startingType  <- parseType
@@ -254,8 +254,14 @@ parseContinueExpression =
 
 
 parseUsage :: Parser CstUsage
-parseUsage =   try parseSeqUsage
-           <|> parseBranchUsage
+parseUsage = 
+    do lst <- sepBy1 parseBranchUsage semi
+       return $ unfoldSeqUsage lst
+        where unfoldSeqUsage [x]    = x
+              unfoldSeqUsage (x:xs) = CstUsageParallel x CstUsageEnd (unfoldSeqUsage xs)
+
+    --   try parseSeqUsage
+            -- <|> parseBranchUsage
 
 parseBranchUsage :: Parser CstUsage
 parseBranchUsage =   parseEndUsage

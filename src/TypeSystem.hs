@@ -238,6 +238,9 @@ isClassType BotType         = True
 isClassType (ClassType _ _) = True 
 isClassType _               = False
 
+isBotType :: Type -> Bool
+isBotType = (== BotType)
+
 isBoolType :: Type -> Bool
 isBoolType (BaseType BoolType) = True
 isBoolType _          = False
@@ -378,14 +381,14 @@ checkCall r m v1 v2 = do
         
         v1Type <- extractTypeFromValue v1
         v2Type <- extractTypeFromValue v2
-        --getGamma >>= \g -> debugTrace ("post extract gamma " ++ show g)
 
         -- check that parameters match
         -- TODO we should only check usageimpl
-        when (isClassType v1Type && isClassType  fromTypeP1) $ do
+        when (isClassType v1Type && isClassType fromTypeP1) $ do
             (cnV1, uV1) <- typeExtractClassInfo v1Type
             (cnFrom1, uFrom1) <- typeExtractClassInfo fromTypeP1
             assert' $ cnV1 == cnFrom1 && currentUsage uFrom1 == currentUsage uV1
+            
 
         unless (isClassType v1Type && isClassType fromTypeP1) $ do
             assert' $ fromTypeP1 == v1Type
@@ -398,33 +401,43 @@ checkCall r m v1 v2 = do
         unless (isClassType v1Type && isClassType  fromTypeP1) $ do
             assert' $ fromTypeP2 == v2Type
         
+
         -- save the resulting parameter type 
         -- we should save the previous s
         when (isClassType v1Type && isClassType toTypeP1) $ do
-            -- copy the s
-            (cnV1, uV1)   <- typeExtractClassInfo v1Type
-            (cnTo1, uTo1) <- typeExtractClassInfo toTypeP1
-            let u' = currentUsage uTo1
-            let newUsage = uV1 { currentUsage = u' }
-            assert' $ cnV1 == cnTo1 
-            updateValueInGamma v1 (ClassType cnV1 newUsage) 
+            when (isBotType toTypeP1) $ do
+                updateValueInGamma v1 toTypeP1
+
+            unless (isBotType toTypeP1) $ do
+                -- copy the s
+                (cnV1, uV1)   <- typeExtractClassInfo v1Type
+                (cnTo1, uTo1) <- typeExtractClassInfo toTypeP1
+                let u' = currentUsage uTo1
+                let newUsage = uV1 { currentUsage = u' }
+                assert' $ cnV1 == cnTo1 
+                updateValueInGamma v1 (ClassType cnV1 newUsage) 
+
 
         unless (isClassType toTypeP1) $ do
             updateValueInGamma v1 toTypeP1
 
+    
         when (isClassType v2Type && isClassType toTypeP2) $ do
             -- copy the s
-            (cnV2, uV2)   <- typeExtractClassInfo v2Type
-            (cnTo2, uTo2) <- typeExtractClassInfo toTypeP2
-            let u' = currentUsage uTo2
-            let newUsage = uV2 { currentUsage = u' }
-            assert' $ cnV2 == cnTo2 
-            updateValueInGamma v2 (ClassType cnV2 newUsage) 
+            when (isBotType toTypeP2) $ do
+                updateValueInGamma v2 toTypeP1
+
+            unless (isBotType toTypeP2) $ do
+                (cnV2, uV2)   <- typeExtractClassInfo v2Type
+                (cnTo2, uTo2) <- typeExtractClassInfo toTypeP2
+                let u' = currentUsage uTo2
+                let newUsage = uV2 { currentUsage = u' }
+                assert' $ cnV2 == cnTo2 
+                updateValueInGamma v2 (ClassType cnV2 newUsage) 
+
 
         unless (isClassType toTypeP2) $ do
             updateValueInGamma v2 toTypeP2
-
-        --getGamma >>= \g -> debugTrace ("updated gamma " ++ show g)
 
         gamma <- getGamma
 
@@ -449,20 +462,15 @@ getReferenceName (RefField n)     = n
 splitGamma :: [String] -> NDTypeSystem ()
 splitGamma variablesIn = do 
     st <- getState
-    --debugTrace $ "splitGamma ND states " ++ show (length st)
     forAll $ do
-            --debugTrace $ "split start " ++ show variablesIn
             gamma <- getGamma
             let gammas = splitGamma' [[]] (reverse gamma)
             s <- getMyState
             t <- getReturnType
-            --debugTrace $ "split size: " ++ show (length gammas)
-            --debugTrace $ "splitLast " ++ show (last gammas)
             return [ (updateGammaInState s gamma', t) 
                    | gamma' <- gammas]
 
     --st' <- getState
-    --debugTrace $ "splitGamma ND states - done " ++ show (length st')
     where variables = nub variablesIn
           splitGamma' :: [Gamma] -> Gamma -> [Gamma]
           splitGamma' gammas []            = gammas
@@ -503,6 +511,7 @@ unsplitGamma variablesIn = forAll $ do
     let variables = nub variablesIn
     gamma <- getGamma
 
+
     -- find the all the references with variable name
     -- we cannot assume ClassType as it could be anything currently
     let sharedVariable = [ (name, sharedTypes)
@@ -534,7 +543,6 @@ unsplitGamma variablesIn = forAll $ do
    
     -- remove all combinations which failed
     let combined' = map (second fromJust) $ filter (isJust . snd) combined
-
     
     -- we should not have lost any field
     assert' $ length combined' == length combined
@@ -938,6 +946,9 @@ extractFields (ExpressionNew _)          = []
 extractFields (ExpressionIf e1 e2 e3)    = nub . concat $ map extractFields [e1, e2, e3]
 extractFields (ExpressionLabel _ e)      = extractFields e
 extractFields (ExpressionContinue _)     = []
+extractFields (ExpressionBinaryOperation _ e1 e2) = nub $ extractFields e1 ++ extractFields e2
+extractFields (ExpressionPrint v)        = extractFieldV v
+extractFields ExpressionInput            = []
 
 extractFieldV :: Value -> [String]
 extractFieldV (ValueBase _)      = []

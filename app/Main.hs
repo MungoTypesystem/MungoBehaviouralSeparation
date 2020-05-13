@@ -8,7 +8,7 @@ import Parser
 import AstTransformer
 import TypeSystem
 import Data.Either (either)
-import Control.Monad (mapM_, guard, when)
+import Control.Monad (mapM_, guard, when, unless)
 import Data.List (permutations, nub)
 import Interpreter 
 
@@ -24,4 +24,7 @@ runFile s = do
 main :: IO ()
 main = do
     args <- getArgs
-    runFile $ head args
+    when (null args) $ do
+        putStrLn "no file specified should be ./program <file>"
+    unless (null args) $ do
+        runFile $ head args
