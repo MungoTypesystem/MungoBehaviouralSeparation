@@ -49,7 +49,8 @@ class main[{main; end}] {
     }
 }
 ```
-<span id="out_file" style="display: none;">
+<details><summary>Output</summary>
+<p>
 
 ```bash
 $ mungob exampleprograms/file.mg < datafile.txt                                              
@@ -59,9 +60,9 @@ with
 multiple
 lines
  ```
- 
-</span>
-<button onclick="toggleOutput('out_file')">Toggle output</button>
+
+</p>
+</details>
 
 
 ## House Controller Example
@@ -224,7 +225,8 @@ class main [{main; end}] {
 }
 ```
 
-<span id="out_account" style="display: none;">
+<details><summary>Output</summary>
+<p>
 
 ```bash
 $ mungob exampleprograms/account.mg                                             
@@ -233,18 +235,7 @@ $ mungob exampleprograms/account.mg
 0
 16030
 ```
-</span>
-<button onclick="toggleOutput('out_account')">Toggle output</button>
 
+</p>
+</details>
 
-<script>
- function toggleOutput(id) {
-  var el = document.getElementById(id);
-  var style = getComputedStyle(el, null).display;
-  if (style == "none") {
-     el.style.display = "block";
-   } else {
-     el.style.display = "none";
-   }
- }
-</script>
