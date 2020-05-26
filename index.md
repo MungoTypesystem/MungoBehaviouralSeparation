@@ -1,4 +1,11 @@
-# Examples in Mungo
+# Program Examples in Mungo
+
+- [Program Examples in Mungo](#program-examples-in-mungo)
+  * [File Example](#file-example)
+  * [House Controller Example](#house-controller-example)
+  * [Bank Account Example](#bank-account-example)
+
+## File Example
 ![File protocol](https://github.com/MungoTypesystem/MungoBehaviouralSeparation/raw/master/protocol_figures/file_protocol.png)
 ```java
 class File [{open; rec X.{isEmpty; <{close; end}, {read; X}>}}] {
@@ -43,6 +50,7 @@ class main[{main; end}] {
 }
 ```
 
+## House Controller Example
 ![House controller protocol](https://github.com/MungoTypesystem/MungoBehaviouralSeparation/raw/master/protocol_figures/house_protocol.png)
 ```java
 class LightController[
@@ -159,6 +167,45 @@ class HouseController [
 
     void turnDoorOff() {
         dc.off()
+    }
+}
+```
+
+## Bank Account Example
+![Account protocol](https://github.com/MungoTypesystem/MungoBehaviouralSeparation/raw/master/protocol_figures/account_protocol.png)
+```java
+class Account [
+        {getBalance; end};{addSalary; {applyInterest; end}};{getBalance; end}
+    ] {
+
+    int balance
+
+    int getBalance() { balance }
+    void addSalary() { balance = (balance + 16000) }
+    void applyInterest() { balance = (balance + 30) }
+}
+
+class Printer [rec X.{output; X finish; end}] {
+    int balance
+    void output(Account[{getBalance; end}] -> Account[end] x) {
+        balance = x.getBalance();
+        print(balance)
+    }
+    void finish() { unit }
+}
+
+class main [{main; end}] {
+    Account acc
+    Printer p
+
+    void main() {
+        acc = new Account;
+        p = new Printer;
+        p.output(acc);
+        acc.addSalary();
+        acc.applyInterest();
+        p.output(acc);
+        p.finish()
     }
 }
 ```
