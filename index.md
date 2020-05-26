@@ -51,7 +51,7 @@ class main[{main; end}] {
 ```
 <details>
 <summary>
- Output
+ <p style="display: inline;">Output</p>
 </summary>
 
 ```
@@ -228,7 +228,9 @@ class main [{main; end}] {
 ```
 
 <details>
- <summary>Output</summary>
+ <summary>
+  <p style="display: inline;">Output</p>
+ </summary>
 
 ```
 $ mungob exampleprograms/account.mg
