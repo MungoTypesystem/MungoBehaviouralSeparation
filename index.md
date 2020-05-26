@@ -55,7 +55,7 @@ class main[{main; end}] {
 </summary>
 
 ```
-$ mungob exampleprograms/file.mg < datafile.txt                                              
+$ mungob exampleprograms/file.mg < datafile.txt
 
 file
 with
@@ -228,12 +228,10 @@ class main [{main; end}] {
 ```
 
 <details>
- <summary>
-  Output
- </summary>
+ <summary>Output</summary>
 
 ```
-$ mungob exampleprograms/account.mg                                             
+$ mungob exampleprograms/account.mg
 
 
 0
