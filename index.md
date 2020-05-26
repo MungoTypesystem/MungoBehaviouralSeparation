@@ -50,15 +50,16 @@ class main[{main; end}] {
 }
 ```
 <span id="out_file" style="display: none;">
+
 ```bash
 $ mungob exampleprograms/file.mg < datafile.txt                                              
-```
-```
+
 file
 with
 multiple
 lines
  ```
+ 
 </span>
 <button onclick="toggleOutput('out_file')">Toggle output</button>
 
@@ -224,13 +225,14 @@ class main [{main; end}] {
 ```
 
 <span id="out_account" style="display: none;">
+
 ```bash
 $ mungob exampleprograms/account.mg                                             
+
+
+0
+16030
 ```
-```
- 0
- 16030
- ```
 </span>
 <button onclick="toggleOutput('out_account')">Toggle output</button>
 
