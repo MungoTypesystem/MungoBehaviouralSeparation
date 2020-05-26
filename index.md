@@ -53,7 +53,6 @@ class main[{main; end}] {
 <summary>
  Output
 </summary>
-<p>
 
 ```
 $ mungob exampleprograms/file.mg < datafile.txt                                              
@@ -64,7 +63,7 @@ multiple
 lines
 ```
 
-</p>
+
 </details>
 
 
@@ -232,7 +231,6 @@ class main [{main; end}] {
  <summary>
   Output
  </summary>
-<p>
 
 ```
 $ mungob exampleprograms/account.mg                                             
@@ -242,6 +240,5 @@ $ mungob exampleprograms/account.mg
 16030
 ```
 
-</p>
 </details>
 
