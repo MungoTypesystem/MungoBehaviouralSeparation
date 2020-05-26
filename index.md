@@ -142,49 +142,27 @@ class HouseController [
     TempController tc
     DoorController dc
 
-    void initLightController() {
-        lc = new LightController
-    }
+    void initLightController() { lc = new LightController }
 
-    void initTempController() {
-        tc = new TempController
-    }
+    void initTempController() { tc = new TempController }
 
-    void initDoorController() {
-        dc = new DoorController
-    }
+    void initDoorController() { dc = new DoorController }
 
-    void lightOn() {
-        lc.on()
-    }
+    void lightOn() { lc.on() }
 
-    void adjustLight() {
-        lc.changeIntensity()
-    }
+    void adjustLight() { lc.changeIntensity() }
 
-    void lightOff() {
-        lc.off()
-    }
+    void lightOff() { lc.off() }
 
-    void setTemperature(int x) {
-        tc.setTemperature(x)
-    }
+    void setTemperature(int x) { tc.setTemperature(x) }
 
-    void turnTempOff() {
-        tc.off()
-    }
+    void turnTempOff() { tc.off() }
 
-    void lockDoors() {
-        dc.lock()
-    }
+    void lockDoors() { dc.lock() }
 
-    void unlockDoors() {
-        dc.unlock()
-    }
+    void unlockDoors() { dc.unlock() }
 
-    void turnDoorOff() {
-        dc.off()
-    }
+    void turnDoorOff() { dc.off() }
 }
 ```
 
