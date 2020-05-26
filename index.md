@@ -49,6 +49,19 @@ class main[{main; end}] {
     }
 }
 ```
+<span id="out_file" style="display: none;">
+```bash
+$ mungob exampleprograms/file.mg < datafile.txt                                              
+```
+```
+file
+with
+multiple
+lines
+ ```
+</span>
+<button onclick="toggleOutput('out_file')">Toggle output</button>
+
 
 ## House Controller Example
 ![House controller protocol](https://github.com/MungoTypesystem/MungoBehaviouralSeparation/raw/master/protocol_figures/house_protocol.png)
@@ -210,12 +223,15 @@ class main [{main; end}] {
 }
 ```
 
-<div id="out_account" style="display: none;">
+<span id="out_account" style="display: none;">
+```bash
+$ mungob exampleprograms/account.mg                                             
 ```
- 16000
+```
+ 0
  16030
  ```
-</div>
+</span>
 <button onclick="toggleOutput('out_account')">Toggle output</button>
 
 
