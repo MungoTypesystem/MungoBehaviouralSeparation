@@ -55,14 +55,14 @@ class main[{main; end}] {
 </summary>
 <p>
 
-```bash
+```
 $ mungob exampleprograms/file.mg < datafile.txt                                              
 
 file
 with
 multiple
 lines
- ```
+```
 
 </p>
 </details>
@@ -234,7 +234,7 @@ class main [{main; end}] {
  </summary>
 <p>
 
-```bash
+```
 $ mungob exampleprograms/account.mg                                             
 
 
