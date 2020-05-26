@@ -209,3 +209,24 @@ class main [{main; end}] {
     }
 }
 ```
+
+<div id="out_account" style="display: none;">
+```
+ 16000
+ 16030
+ ```
+</div>
+<button onclick="toggleOutput('out_account')">Toggle output</button>
+
+
+<script>
+ function toggleOutput(id) {
+  var el = document.getElementById(id);
+  var style = getComputedStyle(el, null).display;
+  if (style == "none") {
+     el.style.display = "block";
+   } else {
+     el.style.display = "none";
+   }
+ }
+</script>
