@@ -49,7 +49,8 @@ class main[{main; end}] {
     }
 }
 ```
-<details><summary>Output</summary>
+<details>
+ <summary>Output</summary>
 <p>
 
 ```bash
@@ -225,7 +226,8 @@ class main [{main; end}] {
 }
 ```
 
-<details><summary>Output</summary>
+<details>
+ <summary>Output</summary>
 <p>
 
 ```bash
