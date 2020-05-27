@@ -93,7 +93,12 @@ data BinaryOperator = OpEQ
                     | OpOr
                     | OpNEQ
                     | OpAdd
-                    | OpSub deriving (Show, Eq)
+                    | OpSub
+                    | OpLT
+                    | OpGT
+                    | OpLEQ
+                    | OpGEQ
+                     deriving (Show, Eq)
 
 -- U
 data Usage = Usage { currentUsage :: UsageImpl

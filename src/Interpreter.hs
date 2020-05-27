@@ -245,6 +245,10 @@ doBinaryOp OpAnd v1 v2 = (BaseBool (v1 `andOp` v2))
 doBinaryOp OpOr v1 v2 = (BaseBool (v1 `orOp` v2))
 doBinaryOp OpAdd v1 v2 = (BaseInteger (intOp (+)  v1 v2))
 doBinaryOp OpSub v1 v2 = (BaseInteger (intOp (-)  v1 v2))
+doBinaryOp OpLT v1 v2 = (BaseBool (intOp (<)  v1 v2))
+doBinaryOp OpGT v1 v2 = (BaseBool (intOp (>)  v1 v2))
+doBinaryOp OpLEQ v1 v2 = (BaseBool (intOp (<=)  v1 v2))
+doBinaryOp OpGEQ v1 v2 = (BaseBool (intOp (>=)  v1 v2))
 
 
 andOp (BValue (BaseBool b1)) (BValue (BaseBool b2)) = b1 && b2

@@ -766,6 +766,7 @@ operatorType o = operatorType' o (BaseType BoolType) (BaseType StringType) (Base
 operatorType' o b s i
     | o `elem` [OpAnd, OpOr]              = [(b, b, b)]
     | o `elem` [OpAdd, OpSub]             = [(i, i, i)]
+    | o `elem` [OpLT, OpGT, OpLEQ, OpGEQ] = [(i, i, b)]
     | o `elem` [OpEQ, OpNEQ]              = [(s, s, b),
                                              (b, b, b),
                                              (i, i, b)]

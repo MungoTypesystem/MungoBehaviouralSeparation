@@ -226,6 +226,10 @@ convertOperator CstOpAnd = OpAnd
 convertOperator CstOpOr = OpOr
 convertOperator CstOpSub = OpSub
 convertOperator CstOpAdd = OpAdd
+convertOperator CstOpLT = OpLT
+convertOperator CstOpGT = OpGT
+convertOperator CstOpLEQ = OpLEQ
+convertOperator CstOpGEQ = OpGEQ
 
 
 convertLabelExpression :: Definitions -> String -> CstExpression -> Error Expression

@@ -29,7 +29,12 @@ data CstBinaryOperator = CstOpEQ
                        | CstOpOr
                        | CstOpAdd
                        | CstOpSub
-                       | CstOpNEQ deriving (Show)
+                       | CstOpNEQ
+                       | CstOpLT
+                       | CstOpGT
+                       | CstOpLEQ
+                       | CstOpGEQ
+                        deriving (Show)
 
 data CstExpression = CstExpressionNew String
                    | CstExpressionAssign String CstExpression

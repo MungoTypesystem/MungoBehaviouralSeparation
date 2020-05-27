@@ -43,7 +43,7 @@ languageDef =
                                       , "input"
                                       , "unit"
                                       , "null" ]
-            , Token.reservedOpNames = ["=", ":", "==", "!=", "&&", "||", "+", "-"]
+            , Token.reservedOpNames = ["=", ":", "==", "!=", "&&", "||", "+", "-", "<", ">", "<=", ">="]
             }
 
 lexer = Token.makeTokenParser languageDef
@@ -164,6 +164,10 @@ parseBinaryOperator =
    <|> (reservedOp "||" >> return CstOpOr)
    <|> (reservedOp "+" >> return CstOpAdd)
    <|> (reservedOp "-" >> return CstOpSub)
+   <|> (reservedOp "<" >> return CstOpLT)
+   <|> (reservedOp ">" >> return CstOpGT)
+   <|> (reservedOp "<=" >> return CstOpLEQ)
+   <|> (reservedOp ">=" >> return CstOpGEQ)
 
 parseExpression' :: Parser CstExpression
 parseExpression' =   parens parseExpression
