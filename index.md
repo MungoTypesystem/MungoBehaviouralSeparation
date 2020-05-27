@@ -4,6 +4,7 @@
   * [File Example](#file-example)
   * [House Controller Example](#house-controller-example)
   * [Bank Account Example](#bank-account-example)
+  * [Travel Agency Example](#travel-agency-example)
 
 ## File Example
 ![File protocol](https://github.com/MungoTypesystem/MungoBehaviouralSeparation/raw/master/protocol_figures/file_protocol.png)
@@ -220,3 +221,117 @@ $ mungob exampleprograms/account.mg
 
 </details>
 
+## Travel Agency Example
+```java
+class PriceValidator[{isFairPrice; <end, end>}] {
+    bool isFairPrice(int x) {
+        (x <= 100)
+    }
+}
+
+class Customer[{bargain; {finalize; end}}] {
+    int price
+    PriceValidator pv
+    Service s
+    int date
+
+    void bargain(Agency[rec X.{getQuote; X accept; end}] -> Agency[end] agent) {
+        pv = new PriceValidator;
+        loop: (
+            price = agent.getQuote();
+            print("New price received from agency");
+            print(price);
+            if (pv.isFairPrice(price)) {
+                print("Accepted price");
+                print(price);
+                s = agent.accept()
+            } else {
+                pv = new PriceValidator;
+                continue loop
+            }
+        )
+    }
+
+    void finalize() {
+        s.setAddress("Selma Lagerlöfs Vej 300");
+        date = s.getDate()
+    }
+}
+
+class Agency[{init; rec X.{getQuote; X accept; end}}] {
+    int curQuote
+
+    void init() {
+        curQuote = (210)
+    }
+
+    int getQuote() {
+        curQuote = (curQuote - 10);
+        curQuote
+    }
+
+    Service[{setAddress; {getDate; end}}] accept() {
+        new Service
+    }
+
+}
+
+class Service[{setAddress; {getDate; end}}] {
+    string address
+    void setAddress(string x) {
+        address = x
+    }
+
+    int getDate() {27}
+}
+
+class main[{main; end}] {
+    Customer c
+    Agency a
+    
+    void main() {
+        c = (new Customer);
+        a = (new Agency);
+        a.init();
+        c.bargain(a);
+        c.finalize()
+    }
+}
+```
+
+<details>
+ <summary>
+  <p style="display: inline;">Output</p>
+ </summary>
+
+```
+$ mungob exampleprograms/travel.mg
+
+
+New price received from agency
+200
+New price received from agency
+190
+New price received from agency
+180
+New price received from agency
+170
+New price received from agency
+160
+New price received from agency
+150
+New price received from agency
+140
+New price received from agency
+130
+New price received from agency
+120
+New price received from agency
+110
+New price received from agency
+100
+Accepted price
+100
+```
+
+</details>
