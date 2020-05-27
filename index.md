@@ -75,7 +75,7 @@ lines
 
 ## House Controller Example
 | ![House controller protocol](https://github.com/MungoTypesystem/MungoBehaviouralSeparation/raw/master/protocol_figures/house_protocol.png) |
-|:--:|
+|:--:| 
 | *Protocol for HouseController class* |
 ```java
 class LightController[
@@ -176,7 +176,7 @@ class HouseController [
 
 ## Bank Account Example
 | ![Account protocol](https://github.com/MungoTypesystem/MungoBehaviouralSeparation/raw/master/protocol_figures/account_protocol.png) |
-|:--:|
+|:--:| 
 | *Protocol for Account class* |
 ```java
 class Account [
@@ -232,7 +232,7 @@ $ mungob exampleprograms/account.mg
 
 ## Travel Agency Example
 | ![Agency protocol](https://github.com/MungoTypesystem/MungoBehaviouralSeparation/raw/master/protocol_figures/agency_protocol.png) |
-|:--:|
+|:--:| 
 | *Protocol for Agency class* |
 ```java
 class PriceValidator[{isFairPrice; <end, end>}] {
