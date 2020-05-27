@@ -318,8 +318,6 @@ $ mungob exampleprograms/travel.mg
 
 
 New price received from agency
-200
-New price received from agency
 190
 New price received from agency
 180
