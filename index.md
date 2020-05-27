@@ -1,4 +1,11 @@
-# Examples in Mungo
+# Program Examples in Mungo
+
+- [Program Examples in Mungo](#program-examples-in-mungo)
+  * [File Example](#file-example)
+  * [House Controller Example](#house-controller-example)
+  * [Bank Account Example](#bank-account-example)
+
+## File Example
 ![File protocol](https://github.com/MungoTypesystem/MungoBehaviouralSeparation/raw/master/protocol_figures/file_protocol.png)
 ```java
 class File [{open; rec X.{isEmpty; <{close; end}, {read; X}>}}] {
@@ -42,7 +49,25 @@ class main[{main; end}] {
     }
 }
 ```
+<details>
+<summary>
+ <p style="display: inline;">Output</p>
+</summary>
 
+```
+$ mungob exampleprograms/file.mg < datafile.txt
+
+file
+with
+multiple
+lines
+```
+
+
+</details>
+
+
+## House Controller Example
 ![House controller protocol](https://github.com/MungoTypesystem/MungoBehaviouralSeparation/raw/master/protocol_figures/house_protocol.png)
 ```java
 class LightController[
@@ -117,48 +142,81 @@ class HouseController [
     TempController tc
     DoorController dc
 
-    void initLightController() {
-        lc = new LightController
-    }
+    void initLightController() { lc = new LightController }
 
-    void initTempController() {
-        tc = new TempController
-    }
+    void initTempController() { tc = new TempController }
 
-    void initDoorController() {
-        dc = new DoorController
-    }
+    void initDoorController() { dc = new DoorController }
 
-    void lightOn() {
-        lc.on()
-    }
+    void lightOn() { lc.on() }
 
-    void adjustLight() {
-        lc.changeIntensity()
-    }
+    void adjustLight() { lc.changeIntensity() }
 
-    void lightOff() {
-        lc.off()
-    }
+    void lightOff() { lc.off() }
 
-    void setTemperature(int x) {
-        tc.setTemperature(x)
-    }
+    void setTemperature(int x) { tc.setTemperature(x) }
 
-    void turnTempOff() {
-        tc.off()
-    }
+    void turnTempOff() { tc.off() }
 
-    void lockDoors() {
-        dc.lock()
-    }
+    void lockDoors() { dc.lock() }
 
-    void unlockDoors() {
-        dc.unlock()
-    }
+    void unlockDoors() { dc.unlock() }
 
-    void turnDoorOff() {
-        dc.off()
+    void turnDoorOff() { dc.off() }
+}
+```
+
+## Bank Account Example
+![Account protocol](https://github.com/MungoTypesystem/MungoBehaviouralSeparation/raw/master/protocol_figures/account_protocol.png)
+```java
+class Account [
+        {getBalance; end};{addSalary; {applyInterest; end}};{getBalance; end}
+    ] {
+
+    int balance
+
+    int getBalance() { balance }
+    void addSalary() { balance = (balance + 16000) }
+    void applyInterest() { balance = (balance + 30) }
+}
+
+class Printer [rec X.{output; X finish; end}] {
+    int balance
+    void output(Account[{getBalance; end}] -> Account[end] x) {
+        balance = x.getBalance();
+        print(balance)
+    }
+    void finish() { unit }
+}
+
+class main [{main; end}] {
+    Account acc
+    Printer p
+
+    void main() {
+        acc = new Account;
+        p = new Printer;
+        p.output(acc);
+        acc.addSalary();
+        acc.applyInterest();
+        p.output(acc);
+        p.finish()
     }
 }
 ```
+
+<details>
+ <summary>
+  <p style="display: inline;">Output</p>
+ </summary>
+
+```
+$ mungob exampleprograms/account.mg
+
+
+0
+16030
+```
+
+</details>
+
