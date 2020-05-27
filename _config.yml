@@ -1,6 +1,6 @@
 theme: jekyll-theme-cayman
 title: Mungo with Behavioural Separation
-description: May 2020
+description: June 2020
 baseurl: /MungoBehaviouralSeparation
 markdown: kramdown
 kramdown:
