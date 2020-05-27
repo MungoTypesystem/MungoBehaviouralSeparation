@@ -1,4 +1,6 @@
 # Program Examples in Mungo
+This page is a repository of program examples written in the Mungo language and typechecked using the `mungob` tool. All examples type check, and where a main class is available, the output of executing the programs is also available. 
+
 - [File Example](#file-example)
 - [House Controller Example](#house-controller-example)
 - [Bank Account Example](#bank-account-example)
@@ -185,7 +187,7 @@ class HouseController [
 |:--:| 
 | *Protocol for Account class* |
 
-In this example we present the sequential usage, and show how a usage U;U'=(U|end).U' can be used to simplify method parameter types, and allow a form of method overloading. The figure above shows the protocol for a bank account. The balance of the account cannot be accessed after calling `addSalary` but before `applyInterest`, hence we never access an intermediate account balance. By using behavioural separation with the sequential usage, the `output` method can be used when `account` has type `Account[{getBalance; end};{addSalary; {applyInterest; end}};{getBalance; end}]` and `Account[{getBalance; end}]`. 
+In this example we present the sequential usage, and show how a usage U;U'=(U\|end).U' can be used to simplify method parameter types, and allow a form of method overloading. The figure above shows the protocol for a bank account. The balance of the account cannot be accessed after calling `addSalary` but before `applyInterest`, hence we never access an intermediate account balance. By using behavioural separation with the sequential usage, the `output` method can be used when `account` has type `Account[{getBalance; end};{addSalary; {applyInterest; end}};{getBalance; end}]` and `Account[{getBalance; end}]`. 
 
 ```java
 class Account [
