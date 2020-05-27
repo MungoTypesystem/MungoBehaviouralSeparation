@@ -290,8 +290,8 @@ class main[{main; end}] {
     Agency a
     
     void main() {
-        c = (new Customer);
-        a = (new Agency);
+        c = new Customer;
+        a = new Agency;
         a.init();
         c.bargain(a);
         c.finalize()
