@@ -222,6 +222,7 @@ $ mungob exampleprograms/account.mg
 </details>
 
 ## Travel Agency Example
+![Agency protocol](https://github.com/MungoTypesystem/MungoBehaviouralSeparation/raw/master/protocol_figures/agency_protocol.png)
 ```java
 class PriceValidator[{isFairPrice; <end, end>}] {
     bool isFairPrice(int x) {
