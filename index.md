@@ -7,7 +7,12 @@
   * [Travel Agency Example](#travel-agency-example)
 
 ## File Example
-![File protocol](https://github.com/MungoTypesystem/MungoBehaviouralSeparation/raw/master/protocol_figures/file_protocol.png)
+
+| ![File protocol](https://github.com/MungoTypesystem/MungoBehaviouralSeparation/raw/master/protocol_figures/file_protocol.png) | 
+|:--:| 
+| *Protocol for File class* |
+
+
 ```java
 class File [{open; rec X.{isEmpty; <{close; end}, {read; X}>}}] {
 
@@ -69,7 +74,9 @@ lines
 
 
 ## House Controller Example
-![House controller protocol](https://github.com/MungoTypesystem/MungoBehaviouralSeparation/raw/master/protocol_figures/house_protocol.png)
+| ![House controller protocol](https://github.com/MungoTypesystem/MungoBehaviouralSeparation/raw/master/protocol_figures/house_protocol.png) |
+|:--:|
+| *Protocol for HouseController class* |
 ```java
 class LightController[
         { on; rec Y.{changeIntensity; Y off; end} }
@@ -168,7 +175,9 @@ class HouseController [
 ```
 
 ## Bank Account Example
-![Account protocol](https://github.com/MungoTypesystem/MungoBehaviouralSeparation/raw/master/protocol_figures/account_protocol.png)
+| ![Account protocol](https://github.com/MungoTypesystem/MungoBehaviouralSeparation/raw/master/protocol_figures/account_protocol.png) |
+|:--:|
+| *Protocol for Account class* |
 ```java
 class Account [
         {getBalance; end};{addSalary; {applyInterest; end}};{getBalance; end}
@@ -222,7 +231,9 @@ $ mungob exampleprograms/account.mg
 </details>
 
 ## Travel Agency Example
-![Agency protocol](https://github.com/MungoTypesystem/MungoBehaviouralSeparation/raw/master/protocol_figures/agency_protocol.png)
+| ![Agency protocol](https://github.com/MungoTypesystem/MungoBehaviouralSeparation/raw/master/protocol_figures/agency_protocol.png) |
+|:--:|
+| *Protocol for Agency class* |
 ```java
 class PriceValidator[{isFairPrice; <end, end>}] {
     bool isFairPrice(int x) {
