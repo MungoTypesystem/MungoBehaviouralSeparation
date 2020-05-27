@@ -1,13 +1,21 @@
 # Program Examples in Mungo
+This page is a repository of program examples written in the Mungo language and typechecked using the `mungob` tool. All examples type check, and where a main class is available, the output of executing the programs is also available. 
 
-- [Program Examples in Mungo](#program-examples-in-mungo)
-  * [File Example](#file-example)
-  * [House Controller Example](#house-controller-example)
-  * [Bank Account Example](#bank-account-example)
-  * [Travel Agency Example](#travel-agency-example)
+- [File Example](#file-example)
+- [House Controller Example](#house-controller-example)
+- [Bank Account Example](#bank-account-example)
+- [Travel Agency Example](#travel-agency-example)
 
 ## File Example
-![File protocol](https://github.com/MungoTypesystem/MungoBehaviouralSeparation/raw/master/protocol_figures/file_protocol.png)
+
+| ![File protocol](https://github.com/MungoTypesystem/MungoBehaviouralSeparation/raw/master/protocol_figures/file_protocol.png) | 
+|:--:| 
+| *Protocol for File class* |
+
+The classic example for typestate programming. A file follows a simple protocol. A file can only be read after it has been opened, and only while the file contains more data than what has already been read. The figure above illustrates this protocol, which can also be seen, expressed as a usage, in the code below.
+
+The implementation of the File class itself is only a skeleton implementation, but the usage is specified according to an actual file implementation. So the interesting class is the main class which actually reads a file. Omitting the line `f.open()` would cause a type error, as would removing the line `f.close()`. 
+
 ```java
 class File [{open; rec X.{isEmpty; <{close; end}, {read; X}>}}] {
 
@@ -69,7 +77,13 @@ lines
 
 
 ## House Controller Example
-![House controller protocol](https://github.com/MungoTypesystem/MungoBehaviouralSeparation/raw/master/protocol_figures/house_protocol.png)
+
+| ![House controller protocol](https://github.com/MungoTypesystem/MungoBehaviouralSeparation/raw/master/protocol_figures/house_protocol.png) |
+|:--:| 
+| *Protocol for HouseController class* |
+
+Here we present a more complex example of a class composed of multiple unlrelated fields. Parallel usages allows for the specfication of a protocol with unrelated parts. In this example, each field results in a parallel constituent for a local protocol for using that specific field. The parallel usages avoid enumerating the exponential number of states arising when allowing arbritrary interleaving of methods on unrelated fields without parallel usages. The figure above illustrates the parallel usage, where each local protocol is followed simultaneously. 
+
 ```java
 class LightController[
         { on; rec Y.{changeIntensity; Y off; end} }
@@ -168,7 +182,13 @@ class HouseController [
 ```
 
 ## Bank Account Example
-![Account protocol](https://github.com/MungoTypesystem/MungoBehaviouralSeparation/raw/master/protocol_figures/account_protocol.png)
+
+| ![Account protocol](https://github.com/MungoTypesystem/MungoBehaviouralSeparation/raw/master/protocol_figures/account_protocol.png) |
+|:--:| 
+| *Protocol for Account class* |
+
+In this example we present the sequential usage, and show how a usage U;U'=(U\|end).U' can be used to simplify method parameter types, and allow a form of method overloading. The figure above shows the protocol for a bank account. The balance of the account cannot be accessed after calling `addSalary` but before `applyInterest`, hence we never access an intermediate account balance. By using behavioural separation with the sequential usage, the `output` method can be used when `account` has type `Account[{getBalance; end};{addSalary; {applyInterest; end}};{getBalance; end}]` and `Account[{getBalance; end}]`. 
+
 ```java
 class Account [
         {getBalance; end};{addSalary; {applyInterest; end}};{getBalance; end}
@@ -222,6 +242,13 @@ $ mungob exampleprograms/account.mg
 </details>
 
 ## Travel Agency Example
+
+| ![Agency protocol](https://github.com/MungoTypesystem/MungoBehaviouralSeparation/raw/master/protocol_figures/agency_protocol.png) |
+|:--:| 
+| *Protocol for Agency class* |
+
+We present another classic example, this time from session type theory. A customer must contact a travel agency and book a trip, after bargaining for a price that is acceptable. The protocol for the travel agent is shown above, and shows a quote can be continuosly requested until the price is reasonable, in which case the trip is accepted, and the travel service is contacted and given the buyers information, and a date for the trip is returned. 
+
 ```java
 class PriceValidator[{isFairPrice; <end, end>}] {
     bool isFairPrice(int x) {
