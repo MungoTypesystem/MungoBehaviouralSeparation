@@ -235,21 +235,30 @@ class Customer[{bargain; {finalize; end}}] {
     Service s
     int date
 
-    void bargain(Agency[rec X.{getQuote; X accept; end}] -> Agency[end] agent) {
+    void bargain(Agency[{getQuote; rec X.{getQuote; X accept; end}}] -> Agency[end] agent) {
         pv = new PriceValidator;
-        loop: (
-            price = agent.getQuote();
-            print("New price received from agency");
+        price = agent.getQuote();
+        if (pv.isFairPrice(price)) {
+            print("Initial price accepted");
             print(price);
-            if (pv.isFairPrice(price)) {
-                print("Accepted price");
+            s = agent.accept()
+        } else {
+            pv = new PriceValidator;
+            loop: (
+                price = agent.getQuote();
+                print("New price received from agency");
                 print(price);
-                s = agent.accept()
-            } else {
-                pv = new PriceValidator;
-                continue loop
-            }
-        )
+                if (pv.isFairPrice(price)) {
+                    print("Accepted price");
+                    print(price);
+                    s = agent.accept()
+                } else {
+                    pv = new PriceValidator;
+                    continue loop
+                }
+            )
+        }
+        
     }
 
     void finalize() {
@@ -258,7 +267,7 @@ class Customer[{bargain; {finalize; end}}] {
     }
 }
 
-class Agency[{init; rec X.{getQuote; X accept; end}}] {
+class Agency[{init; {getQuote; rec X.{getQuote; X accept; end}}}] {
     int curQuote
 
     void init() {
