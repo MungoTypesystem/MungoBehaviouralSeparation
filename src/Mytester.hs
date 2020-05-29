@@ -104,9 +104,9 @@ f2 = ("g", c2)
 f3 = ("h", c3)
 f4 = ("h", c4)
 
-s1 = splitField f1
-s2 = splitField f2
-s3 = splitField f3
-s4 = splitField f4
+search1 = UsageParallel (UsageBranch [("c", UsageEnd)]) (UsageBranch [("d", UsageEnd)]) UsageEnd
+search2 = UsageBranch [("d", UsageEnd)] 
 
-
+myUsage = Usage (UsageParallel lhs rhs UsageEnd) SplitEmpty
+    where lhs = UsageParallel (UsageBranch [("a", UsageEnd)]) (UsageBranch [("b", UsageEnd)]) UsageEnd
+          rhs = UsageParallel (UsageBranch [("c", UsageEnd)]) (UsageBranch [("d", UsageEnd)]) UsageEnd

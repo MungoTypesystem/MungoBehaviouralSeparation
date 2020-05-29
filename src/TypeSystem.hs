@@ -355,6 +355,87 @@ checkFld fieldname expression = do
         let state' = updateGammaInState state gammaResult
         return [(state', (BaseType VoidType))]
 
+splitReferenceIf :: MonadFail m => String -> Type -> m Gamma 
+splitReferenceIf r (ClassType cn u) = fromMaybeM $ splitReferenceIf' r cn u
+splitReferenceIf r t                = return [(r, t)] 
+
+splitReferenceIf' :: String -> ClassName -> Usage -> Maybe Gamma 
+splitReferenceIf' r cn (Usage (UsageParallel u1 u2 u3) s) = 
+    let u1' = Usage u1 (SplitLeft s)
+        u2' = Usage u2 (SplitRight s)
+        g1  = splitReferenceIf' r cn u1'
+        g2  = splitReferenceIf' r cn u2'
+        u3' = Usage (UsageParallel UsagePlaceholder UsagePlaceholder u3) s
+    in if isJust g1
+            then Just $ (fromJust g1) ++ [(r, (ClassType cn u2')), (r, (ClassType cn u3'))]
+            else if isJust g2
+                        then Just $ (fromJust g2) ++ [(r, (ClassType cn u1')), (r, (ClassType cn u3'))]
+                        else Nothing
+splitReferenceIf' r cn u = 
+    if isJust (choiceTransitions u)
+            then Just [(r, (ClassType cn u))]
+            else Nothing
+
+splitReference :: MonadFail m => String -> String -> Type -> m Gamma 
+splitReference r m (ClassType cn u) = fromMaybeM $ splitReference' r m cn u
+splitReference r m t                = return [(r, t)] 
+
+splitReference' :: String -> String -> ClassName -> Usage -> Maybe Gamma 
+splitReference' r m cn (Usage (UsageParallel u1 u2 u3) s) = 
+    let u1' = Usage u1 (SplitLeft s)
+        u2' = Usage u2 (SplitRight s)
+        g1  = splitReference' r m cn u1'
+        g2  = splitReference' r m cn u2'
+        u3' = Usage (UsageParallel UsagePlaceholder UsagePlaceholder u3) s
+    in if isJust g1
+            then Just $ (fromJust g1) ++ [(r, (ClassType cn u2')), (r, (ClassType cn u3'))]
+            else if isJust g2
+                        then Just $ (fromJust g2) ++ [(r, (ClassType cn u1')), (r, (ClassType cn u3'))]
+                        else Nothing
+splitReference' r m cn u = 
+    if isJust (m `lookup` methodTransitions u)
+            then Just [(r, (ClassType cn u))]
+            else Nothing
+  
+splitValue :: MonadFail m => Type -> String -> Type -> m Gamma
+splitValue (ClassType cn (Usage u _)) v (ClassType cn' u') = 
+    if cn == cn' 
+        then splitValue' cn u v u'
+        else fail ""
+splitValue t@(BaseType target) v (BaseType current) = 
+    if target == current
+        then return [(v, t)]
+        else fail ""
+splitValue _ v _ = fail ""
+
+splitValue' :: MonadFail m => String -> UsageImpl -> String -> Usage -> m Gamma 
+splitValue' cn targetU v u@(Usage currentU _) =
+    if targetU == currentU 
+        then return [(v, (ClassType cn u))]
+        else splitValue'' cn targetU v u
+
+splitValue'' :: MonadFail m => String -> UsageImpl -> String -> Usage -> m Gamma 
+splitValue'' cn targetU v (Usage (UsageParallel u1 u2 u3) s) =
+    let u1' = Usage u1 (SplitLeft s)
+        u2' = Usage u2 (SplitRight s)
+        u3' = Usage (UsageParallel UsagePlaceholder UsagePlaceholder u3) s
+        g1  = splitValue' cn targetU v u1'
+        g2  = splitValue' cn targetU v u2'
+    in if isJust g1
+            then return $ (fromJust g1) ++ [(v, (ClassType cn u2')), (v, (ClassType cn u3'))]
+            else if isJust g2
+                        then return $ (fromJust g2) ++ [(v, (ClassType cn u1')), (v, (ClassType cn u3'))]
+                        else fail "" 
+splitValue'' cn targetU v _ = fail ""
+
+splitValueBindings :: MonadFail m => Type -> String -> [Type] -> m Gamma
+splitValueBindings target v []     = fail ""
+splitValueBindings target v (x:xs) =
+    case splitValue target v x of
+        (Just gamma) -> return $ gamma ++ map (\t -> (v, t)) xs
+        Nothing      -> do rest <- splitValueBindings target v xs 
+                           return $ rest ++ [(v, x)]
+
 checkCall :: Reference -> MethodName -> Value -> Value -> NDTypeSystem ()
 checkCall r m v1 v2 = do
     -- find the names of r v1 v2
@@ -362,7 +443,41 @@ checkCall r m v1 v2 = do
     -- split gamma
     -- check call
     -- unsplit gamma
-    splitGamma names
+    -- splitGamma names
+    forAll $ do
+        assertNotAnyState
+        (Method retType _ p1 p2 _) <- getMethod r m 
+        let typeP1 = parameterFrom p1
+        let typeP2 = parameterFrom p2
+        gamma <- getGamma --  [(String, Type)]
+        -- look for r
+        let rName = getReferenceName r
+        rType <- rName `envLookupIn` gamma
+        gammaR <- splitReference rName m rType
+        -- remove reference to r
+        let gamma' = filter ((rName /=) . fst) gamma 
+        -- look for v1
+        let v1Name = getValueName v1
+        (gammaV1', gamma'') <-
+            case v1Name of
+                Nothing   -> return ([], gamma')
+                (Just vn) -> do let newGamma = filter ((vn /=) . fst) gamma'
+                                vType <- vn `envLookupIn` gamma'
+                                (binding:rest) <- splitValue typeP1 vn vType
+                                return ([binding], rest++newGamma)
+        let v2Name = getValueName v2
+        (gammaV2', gamma''') <-
+            case v2Name of
+                Nothing   -> return ([], gamma'')
+                (Just vn) -> do let newGamma = filter ((vn /=) . fst) gamma''
+                                let bindings = map snd $ filter ((vn ==) . fst) gamma''
+                                gammaV2 <- splitValueBindings typeP2 vn bindings
+                                return (gammaV2, newGamma)
+                                
+        let resGamma = gammaR ++ gammaV1' ++ gammaV2' ++ gamma'''
+        writeGamma resGamma
+        s <- getState
+        return [s]
 
     forAll $ do
         assertNotAnyState
@@ -459,58 +574,10 @@ getReferenceName :: Reference -> String
 getReferenceName (RefParameter n) = n
 getReferenceName (RefField n)     = n
 
-splitGamma :: [String] -> NDTypeSystem ()
-splitGamma variablesIn = do 
-    st <- getState
-    forAll $ do
-            gamma <- getGamma
-            let gammas = splitGamma' [[]] (reverse gamma)
-            s <- getMyState
-            t <- getReturnType
-            return [ (updateGammaInState s gamma', t) 
-                   | gamma' <- gammas]
-
-    --st' <- getState
-    where variables = nub variablesIn
-          splitGamma' :: [Gamma] -> Gamma -> [Gamma]
-          splitGamma' gammas []            = gammas
-          splitGamma' gammas ((f, t) : gs) =
-                if f `elem` variables
-                    then splitGamma' [ field ++ g | g <- gammas, field <- splitField (f, t) ] gs
-                    else splitGamma' [ (f, t) : g | g <- gammas] gs
-
-splitField :: (String, Type) -> [[(String, Type)]]
-splitField (f, (ClassType cn u)) = 
-    let split     = splitUsage u :: [[Usage]]
-        withType  = map (map convertToType) split :: [[Type]]
-        withField = map (map addField) withType :: [[(String, Type)]]
-    in withField
-        where convertToType u' = ClassType cn u'
-              addField t       = (f, t)
-splitField (f, t) = [[(f, t)]]
-
-splitUsage :: Usage -> [[Usage]]
-splitUsage u =
-    let split             = splitUsage' u
-        splitPermutations = concat [ permutations lst | lst <- split]
-    in splitPermutations
-    where
-        splitUsage' :: Usage -> [[Usage]]
-        splitUsage' u@(Usage (UsageParallel u1 u2 u3) s) = 
-            let u1' = Usage u1 (SplitLeft s)
-                u2' = Usage u2 (SplitRight s)
-                u3' = Usage (UsageParallel UsagePlaceholder UsagePlaceholder u3) s
-                u1Split = splitUsage' u1' :: [[Usage]]
-                u2Split = splitUsage' u2' :: [[Usage]]
-            in [[u]] ++ [[u3'] ++ lst1 ++ lst2 | lst1 <- u1Split
-                                               , lst2 <- u2Split]
-        splitUsage' u = [[u]]
-
 unsplitGamma :: [String] -> NDTypeSystem ()
 unsplitGamma variablesIn = forAll $ do
     let variables = nub variablesIn
     gamma <- getGamma
-
 
     -- find the all the references with variable name
     -- we cannot assume ClassType as it could be anything currently
@@ -574,62 +641,77 @@ unsplitGamma variablesIn = forAll $ do
     let s' = updateGammaInState s gamma'''
     
     return [(s',t)]
-    where fixEndParallelEndType :: (String, Type) -> (String, Type) 
-          fixEndParallelEndType (f, (ClassType cn u)) = (f, (ClassType cn (fixEndParallelEnd u)))
-          fixEndParallelEndType otherwise             = otherwise
-        
-          fixEndParallelEnd :: Usage -> Usage
-          fixEndParallelEnd u = u{currentUsage = fixEndParallelEnd' (currentUsage u)}
 
-          fixEndParallelEnd' :: UsageImpl -> UsageImpl
-          fixEndParallelEnd' (UsageParallel UsageEnd UsageEnd u) = u
-          fixEndParallelEnd' (UsageParallel u1 u2 u3) = 
-                let u1' = (fixEndParallelEnd' u1)
-                    u2' = (fixEndParallelEnd' u2)
-                in if u1' == UsageEnd && u2' == UsageEnd
-                        then u3
-                        else UsageParallel u1' u2' u3
-          fixEndParallelEnd' u = u
+fixEndParallelEndType :: (String, Type) -> (String, Type) 
+fixEndParallelEndType (f, (ClassType cn u)) = (f, (ClassType cn (fixEndParallelEnd u)))
+fixEndParallelEndType otherwise             = otherwise
+
+fixEndParallelEnd :: Usage -> Usage
+fixEndParallelEnd u = u{currentUsage = fixEndParallelEnd' (currentUsage u)}
+
+fixEndParallelEnd' :: UsageImpl -> UsageImpl
+fixEndParallelEnd' (UsageParallel UsageEnd UsageEnd u) = u
+fixEndParallelEnd' (UsageParallel u1 u2 u3) = 
+    let u1' = (fixEndParallelEnd' u1)
+        u2' = (fixEndParallelEnd' u2)
+    in if u1' == UsageEnd && u2' == UsageEnd
+            then u3
+            else UsageParallel u1' u2' u3
+fixEndParallelEnd' u = u
+
+
+fixGamma :: MonadFail m => Gamma -> FieldName -> ClassName -> m Gamma
+fixGamma g f cn =
+    do usages     <- sequence $ map (typeExtractClassInfo . snd) $ filter ((f ==) . fst) g
+       let g'     = filter ((f /=) . fst) g
+       fixedGamma <- fixField f cn (map snd usages)
+       return $ fixedGamma ++ g'
+
+fixField :: MonadFail m => FieldName -> ClassName -> [Usage] -> m Gamma
+fixField f cn u =
+    do u' <- fromMaybeM (fixPointCombiner u)
+       assert' (length u' == 1)
+       let u'' = fixEndParallelEnd (head u')
+       return $ [(f, (ClassType cn u''))]
  
-          fixPointCombiner :: [Usage] -> Maybe [Usage]
-          fixPointCombiner lst = do
-              lst' <- combiner [] lst
-              if lst == lst'
-                  then Just lst'
-                  else fixPointCombiner lst'
-  
-          combiner :: [Usage] -> [Usage] -> Maybe [Usage]
-          combiner ul []     = return ul
-          combiner ul (u:xs) = do
-              let o = UsagePlaceholder
-              let s = currentSplit u
-              let u' = currentUsage u
-              case u' of 
-                  (UsageParallel UsagePlaceholder UsagePlaceholder u3) -> 
-                      combiner' ul xs u3 s
-                  _ -> 
-                      combiner (ul ++ [u]) xs
-  
-          combiner' :: [Usage] -> [Usage] -> UsageImpl -> SplitUsage -> Maybe [Usage]
-          combiner' ul xs u3 s = do
-              let rhs = filter ((SplitRight s ==) . currentSplit) $ ul ++ xs
-              let lhs = filter ((SplitLeft s ==) . currentSplit) $ ul ++ xs
-              let ul' = filter (\u -> currentSplit u `notElem` [SplitLeft s, SplitRight s]) $ ul
-              let xs' = filter (\u -> currentSplit u `notElem` [SplitLeft s, SplitRight s]) $ xs
-              assert' $ length rhs == 1
-              assert' $ length lhs == 1
-              let ru = head rhs
-              let lu = head lhs
-              -- make sure that ru and lu is completed
-              let completed = (Usage (UsageParallel (currentUsage lu) (currentUsage ru) u3) s)
-              let incomplet = (Usage (UsageParallel UsagePlaceholder UsagePlaceholder u3) s)
-              if isComplete ru && isComplete lu
-                  then combiner (ul' ++ [completed]) xs'
-                  else combiner (ul ++ [incomplet]) xs
 
-          isComplete :: Usage -> Bool
-          isComplete (Usage (UsageParallel UsagePlaceholder UsagePlaceholder _) _) = False
-          isComplete _                                                             = True
+fixPointCombiner :: [Usage] -> Maybe [Usage]
+fixPointCombiner lst = do
+    lst' <- combiner [] lst
+    if lst == lst'
+        then Just lst'
+        else fixPointCombiner lst'
+
+combiner :: [Usage] -> [Usage] -> Maybe [Usage]
+combiner ul []     = return ul
+combiner ul (u:xs) = do
+    let o = UsagePlaceholder
+    let s = currentSplit u
+    let u' = currentUsage u
+    case u' of 
+        (UsageParallel UsagePlaceholder UsagePlaceholder u3) -> combiner' ul xs u3 s
+        _ -> combiner (ul ++ [u]) xs
+
+combiner' :: [Usage] -> [Usage] -> UsageImpl -> SplitUsage -> Maybe [Usage]
+combiner' ul xs u3 s = do
+    let rhs = filter ((SplitRight s ==) . currentSplit) $ ul ++ xs
+    let lhs = filter ((SplitLeft s ==) . currentSplit) $ ul ++ xs
+    let ul' = filter (\u -> currentSplit u `notElem` [SplitLeft s, SplitRight s]) $ ul
+    let xs' = filter (\u -> currentSplit u `notElem` [SplitLeft s, SplitRight s]) $ xs
+    assert' $ length rhs == 1
+    assert' $ length lhs == 1
+    let ru = head rhs
+    let lu = head lhs
+    -- make sure that ru and lu is completed
+    let completed = (Usage (UsageParallel (currentUsage lu) (currentUsage ru) u3) s)
+    let incomplet = (Usage (UsageParallel UsagePlaceholder UsagePlaceholder u3) s)
+    if isComplete ru && isComplete lu
+        then combiner (ul' ++ [completed]) xs'
+        else combiner (ul ++ [incomplet]) xs
+
+isComplete :: Usage -> Bool
+isComplete (Usage (UsageParallel UsagePlaceholder UsagePlaceholder _) _) = False
+isComplete _                                                             = True
 
 
 checkVal :: Value -> NDTypeSystem ()
@@ -673,7 +755,18 @@ checkIf e1 e2 e3 = do
     checkExpression e1 
     (ExpressionCall r m v1 v2) <- toCallExpression e1
     let name = getReferenceName r
-    splitGamma [name]
+    forAll $ do
+        gamma  <- getGamma --  [(String, Type)]
+        debugTrace $ show gamma
+        rType  <- name `envLookupIn` gamma
+        gammaR <- splitReferenceIf name rType
+        let gamma' = filter ((name /=) . fst) gamma 
+        let resGamma = gammaR ++ gamma'
+        writeGamma resGamma
+        -- stuff
+        s <- getState
+        return [s] 
+    --splitGamma [name]
     forAll $ do
         assertNotAnyState
         retType <- getReturnType
@@ -685,8 +778,10 @@ checkIf e1 e2 e3 = do
         gamma' <- getGamma
         let gammaTrue    = (name, (ClassType cn usageT)) : gamma'
         let gammaFalse   = (name, (ClassType cn usageF)) : gamma'
-        let myStateTrue  = updateGammaInState myState gammaTrue
-        let myStateFalse = updateGammaInState myState gammaFalse
+        gammaTrue'  <- fixGamma gammaTrue name cn
+        gammaFalse' <- fixGamma gammaFalse name cn
+        let myStateTrue  = updateGammaInState myState gammaTrue'
+        let myStateFalse = updateGammaInState myState gammaFalse'
         (_,  trueStates) <- fromEitherM $ runState (checkExpression e2) [(myStateTrue, (BaseType VoidType))]
         let r = runState (checkExpression e3) [(myStateFalse, (BaseType VoidType))]
         (_, falseStates) <- fromEitherM $ runState (checkExpression e3) [(myStateFalse, (BaseType VoidType))]
@@ -707,7 +802,6 @@ checkIf e1 e2 e3 = do
         assert' $ not (null res)
         return res
 
-    unsplitGamma [name]
     where toCallExpression e@(ExpressionCall _ _ _ _) = return e
           toCallExpression _                          = fail "not a call expression"
 
