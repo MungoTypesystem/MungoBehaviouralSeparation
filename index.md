@@ -5,6 +5,7 @@ This page is a repository of program examples written in the Mungo language and 
 - [House Controller Example](#house-controller-example)
 - [Bank Account Example](#bank-account-example)
 - [Travel Agency Example](#travel-agency-example)
+- [Aliasing Example](#aliasing-example)
 
 ## File Example
 
@@ -366,6 +367,63 @@ New price received from agency
 100
 Accepted price
 100
+```
+
+</details>
+
+## Aliasing Example
+
+| ![Pair protocol](https://github.com/MungoTypesystem/MungoBehaviouralSeparation/raw/master/protocol_figures/pair_protocol.png) |
+|:--:| 
+| *Protocol for Pair class* |
+
+We present an example of aliasing. The Pair class must be initialised with a left and right value before calling the sum method. The PairUser class initialises both a left side and right side of a pair, given as arguments. Calling the method with the same Pair object as both parameters, causes the full object to be initialised.
+
+```java
+class Pair[({setLeft; end} | {setRight; end}).{sum; end}] {
+    int left
+    int right
+
+    void setLeft(int x) { left = x }
+    
+    void setRight(int x) { right = x }
+
+    int sum() { left + right }
+}
+
+class PairUser[{initialise; end}] {
+    void initialise(Pair[{setLeft; end}] -> Pair[end] l, 
+                    Pair[{setRight; end}] -> Pair[end] r) {
+        l.setLeft(2);
+        r.setRight(5)
+    }
+}
+
+class main[{main; end}] {
+    Pair p
+    PairUser pu
+    int res
+
+    void main() {
+        p = new Pair;
+        pu = new PairUser;
+        pu.initialise(p, p);
+        res = p.sum();
+        print(res)
+    }
+}
+```
+
+<details>
+ <summary>
+  <p style="display: inline;">Output</p>
+ </summary>
+
+```
+$ mungob exampleprograms/pair.mg
+
+
+7
 ```
 
 </details>
