@@ -4,6 +4,8 @@ class True [{t; <end, end>}] {
     }
 }
 
+class BoolValidator[{validate;<end, end>}] { bool validate(bool b) { b } }
+
 class main [{main; end}] {
     True t
     void main() {

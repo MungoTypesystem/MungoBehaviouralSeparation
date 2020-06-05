@@ -1,0 +1,4 @@
+1: INC 1 2
+2: JZDEC 2 4 3
+3: INC 1 4
+4: HALT

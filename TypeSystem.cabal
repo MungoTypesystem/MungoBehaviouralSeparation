@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: b3631f3f84c4a69780ecbc8e9405dee0e23e84596f55c6da25965f9f05efa2ea
+-- hash: 630526281ecf7516b5799f71f78dc7e49d20e5247c7a5b92557f38a5ed1abddb
 
 name:           TypeSystem
 version:        0.1.0.0
@@ -32,6 +32,7 @@ library
       Interpreter
       Lib
       ListUtils
+      Minsky
       Mytester
       Parser
       StateErrorMonad
