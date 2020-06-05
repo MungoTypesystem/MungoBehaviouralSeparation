@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: a0ce1bc2106ed81d2bf6bcb335703f4e47ce03ec9d35682f73d756aa94bab495
+-- hash: b3631f3f84c4a69780ecbc8e9405dee0e23e84596f55c6da25965f9f05efa2ea
 
 name:           TypeSystem
 version:        0.1.0.0
@@ -35,7 +35,7 @@ library
       Mytester
       Parser
       StateErrorMonad
-      Typesystem
+      TypeSystem
   other-modules:
       Paths_TypeSystem
   hs-source-dirs:
@@ -45,9 +45,10 @@ library
     , containers
     , mtl
     , parsec >=3.1.11 && <4
+    , parsec-numbers
   default-language: Haskell2010
 
-executable TypeSystem-exe
+executable mungobs
   main-is: Main.hs
   other-modules:
       Paths_TypeSystem
@@ -60,6 +61,7 @@ executable TypeSystem-exe
     , containers
     , mtl
     , parsec >=3.1.11 && <4
+    , parsec-numbers
   default-language: Haskell2010
 
 test-suite TypeSystem-test
@@ -76,4 +78,5 @@ test-suite TypeSystem-test
     , containers
     , mtl
     , parsec >=3.1.11 && <4
+    , parsec-numbers
   default-language: Haskell2010

@@ -30,7 +30,7 @@ library:
   source-dirs: src
 
 executables:
-  TypeSystem-exe:
+  mungobs:
     main:                Main.hs
     source-dirs:         app
     ghc-options:

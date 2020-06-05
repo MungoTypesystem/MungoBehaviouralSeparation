@@ -9,13 +9,13 @@ class main [{main; end}] {
     int c
     void main() {
         i = new Infinite;
-        (loop: 
+        loop: 
             if (i.shouldContinue()) {
                 c = (c + 1);
                 print(c);
                 continue loop
             } else {
                 unit
-            })
+            }
     }
 }
