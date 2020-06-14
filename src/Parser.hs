@@ -11,6 +11,7 @@ import qualified Text.ParserCombinators.Parsec.Token as Token
 import Control.Arrow (left)
 import Data.Maybe
 import Text.ParserCombinators.Parsec.Number
+import Data.Either (partitionEithers)
 
 parseProgram :: String -> Either String [CstClass]
 parseProgram = left show . parse (parseClasses <* eof) "" 
@@ -73,10 +74,20 @@ parseClass =
     do reserved "class"
        name <- identifier
        usage <- brackets parseUsage
-       braces $ do fields  <- parseFields
-                   methods <- parseMethods
+       braces $ do 
+                   --fields  <- parseFields
+                   --methods <- parseMethods
+                   fieldsAndClasses <- parseMethodsAndFields
+                   let (fields, methods) = partitionEithers fieldsAndClasses
                    return $ CstClass name usage fields methods
        
+parseMethodsAndFields :: Parser [Either CstField CstMethod]
+parseMethodsAndFields = 
+    many1 parseMethodOrField  
+
+parseMethodOrField :: Parser (Either CstField CstMethod)
+parseMethodOrField = 
+    (Right <$> try parseMethod) <|> (Left <$> parseField)
 
 parseFields :: Parser [CstField]
 parseFields = parseField `manyTill` lookAhead (try parseMethod)

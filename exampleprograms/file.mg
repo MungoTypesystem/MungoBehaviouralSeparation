@@ -1,10 +1,11 @@
-class File [{open; rec X.{isEmpty; <{close; end}, {read; X}>}}] {
+class File [({open; rec X.{isEmpty; <{close; end}, {read; X}>}} | {nothing; end}).end] {
 
-    string next
+    
     void open() {
         unit
     }
     
+	string next
     bool isEmpty() {
         next = input();
         next == ""
@@ -17,6 +18,9 @@ class File [{open; rec X.{isEmpty; <{close; end}, {read; X}>}}] {
     void close() {
         unit
     }
+	void nothing() {
+		unit
+	}
 }
 
 
@@ -35,6 +39,7 @@ class main[{main; end}] {
                 print(lastLine);
                 continue loop
             }
-        )
+        );
+		f.nothing()
     }
 }
